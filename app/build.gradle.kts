@@ -51,6 +51,8 @@ dependencies {
     implementation(libs.androidx.compose.material3)
     implementation(libs.voyager.navigator)
     implementation(libs.androidx.lifecycle.viewmodel.compose)
+    implementation(project(":unifile"))
+    implementation(libs.coil.compose)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)

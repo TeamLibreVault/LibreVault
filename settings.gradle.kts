@@ -21,3 +21,4 @@ dependencyResolutionManagement {
 
 rootProject.name = "LibreVault"
 include(":app")
+include(":unifile")
