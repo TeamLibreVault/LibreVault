@@ -47,11 +47,17 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import cafe.adriel.voyager.core.screen.Screen
 import coil3.compose.AsyncImage
+import coil3.request.CachePolicy
+import coil3.request.ImageRequest
+import coil3.request.crossfade
+import coil3.size.Size
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import me.kys0.unifile.UniFile
 import java.io.File
+import kotlin.time.measureTime
 
 private const val TAG = "MainScreen"
 
@@ -81,37 +87,63 @@ class MainScreen : Screen {
 
         val images = remember { mutableStateListOf<ByteArray>() }
 
+        var encrypted = 0
+
         LaunchedEffect(key1 = Unit) {
-            VaultFolder.init()
+
+        }
+
+        fun getBaseKey(): ByteArray {
+            val baseKeyFile = Constants.VAULT_FILE.resolve("base")
+            val baseKey: ByteArray = if (baseKeyFile.exists()) {
+                BaseKeyCrypto.decrypt(baseKeyFile)
+            } else {
+                val key = SecureFileCipher.generateBaseKey() // should return ByteArray
+                BaseKeyCrypto.encrypt(key, baseKeyFile)
+                key
+            }
+            return baseKey
         }
 
         LaunchedEffect(key1 = selectedFiles.size) {
-            if (selectedFiles.isNotEmpty()) {
-                selectedFiles.forEach { file ->
-                    FileCrypto.encryptFile(
-                        inputFile = file,
-                        outputFile = File(VaultFolder.path.absolutePath + File.separator + file.nameWithoutExtension + ".bin"),
-                        onProgress = { progress ->
-                            Log.d(TAG, "Content: Progress: $progress")
+            withContext(Dispatchers.IO) {
+                val baseKey = getBaseKey()
+                if (selectedFiles.isNotEmpty()) {
+                    selectedFiles.forEach { file ->
+                        val outputFile =
+                            Constants.VAULT_FILE.resolve(file.nameWithoutExtension + ".bin")
+                        val duration = measureTime {
+                            SecureFileCipher.encryptFile(
+                                inputFile = file,
+                                outputFile = outputFile,
+                                key = baseKey,
+                            ) { encrypted++ }
                         }
-                    ) { success, e ->
-                        if (success) Log.d(TAG, "Content: Success encrypting!")
-                        else Log.e(TAG, "Content: ", e)
+                        Log.d(TAG, "Encryption for: ${file.nameWithoutExtension} took $duration!")
                     }
+                    baseKey.fill(0)
                 }
             }
         }
 
-        LaunchedEffect(key1 = Unit) {
-            withContext(Dispatchers.IO) {
+        LaunchedEffect(key1 = encrypted) {
+            withContext(Dispatchers.Default + SupervisorJob()) {
+                val baseKey = getBaseKey()
+                val files = Constants.VAULT_FILE.listFiles()?.filterNotNull()
+                    ?.filter { it.extension == "bin" }
+                    ?: emptyList()
+
                 images.clear()
-                val files = VaultFolder.path.listFiles()?.filterNotNull() ?: emptyList()
-
-                files.sortedBy { it.length() }.forEach { file ->
-                    images += FileCrypto.decryptFileToBytes(file) {
-
+                files.forEach { file ->
+                    val time = measureTime {
+                        images += SecureFileCipher.decryptToBytes(
+                            inputFile = file,
+                            key = baseKey
+                        )
                     }
+                    Log.d(TAG, "Decryption for: ${file.nameWithoutExtension} took $time!")
                 }
+                baseKey.fill(0)
             }
         }
 
@@ -210,13 +242,23 @@ class MainScreen : Screen {
                     LazyVerticalStaggeredGrid(
                         columns = StaggeredGridCells.Fixed(2),
                         contentPadding = PaddingValues(8.dp),
-                        verticalItemSpacing = 8.dp
+                        verticalItemSpacing = 8.dp,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        items(items = images) { image ->
-                            Card(shape = MaterialTheme.shapes.medium) {
+                        items(items = images, key = { it.hashCode() }) { image ->
+                            Card(
+                                shape = MaterialTheme.shapes.medium,
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
                                 AsyncImage(
-                                    model = image,
-                                    contentDescription = null
+                                    model = ImageRequest.Builder(LocalContext.current)
+                                        .data(image)
+                                        .crossfade(true)
+                                        .size(Size.ORIGINAL)
+                                        .diskCachePolicy(CachePolicy.ENABLED)
+                                        .memoryCachePolicy(CachePolicy.ENABLED)
+                                        .build(),
+                                    contentDescription = null,
                                 )
                             }
                         }
