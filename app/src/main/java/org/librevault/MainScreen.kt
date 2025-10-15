@@ -68,7 +68,6 @@ private const val TAG = "MainScreen"
 
 class MainScreen : Screen {
 
-
     @OptIn(ExperimentalMaterial3Api::class)
     @Composable
     override fun Content() {
