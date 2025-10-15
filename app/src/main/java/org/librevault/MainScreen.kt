@@ -1,7 +1,6 @@
 package org.librevault
 
 import android.util.Log
-import androidx.activity.compose.LocalActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
@@ -52,7 +51,6 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import cafe.adriel.voyager.core.screen.Screen
-import cafe.adriel.voyager.navigator.currentOrThrow
 import coil3.compose.rememberAsyncImagePainter
 import coil3.request.CachePolicy
 import coil3.request.ImageRequest
@@ -61,7 +59,9 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import me.kys0.unifile.UniFile
+import org.librevault.Constants.Vault.InfoKeys
 import java.io.File
+import java.util.Properties
 import kotlin.time.measureTime
 
 private const val TAG = "MainScreen"
@@ -73,7 +73,6 @@ class MainScreen : Screen {
     @Composable
     override fun Content() {
         val context = LocalContext.current
-        val activity = LocalActivity.currentOrThrow
         val coroutine = rememberCoroutineScope()
         val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
         val selectedFiles = remember { mutableStateListOf<File>() }
@@ -98,6 +97,7 @@ class MainScreen : Screen {
                 if (ROOT.exists().not()) ROOT.mkdirs()
                 if (THUMBS.exists().not()) THUMBS.mkdirs()
                 if (DATA.exists().not()) DATA.mkdirs()
+                if (INFO.exists().not()) INFO.mkdirs()
             }
         }
 
@@ -122,26 +122,45 @@ class MainScreen : Screen {
                 if (selectedFiles.isNotEmpty()) {
                     selectedFiles.forEachIndexed { idx, file ->
                         val duration = measureTime {
-                            val original = Constants.Vault.DATA.resolve(file.nameWithoutExtension + ".bin")
-                            val thumbOutputFile = Constants.Vault.THUMBS.resolve(file.nameWithoutExtension + ".bin")
-                            val thumb = MediaThumbnailer.generate(file) ?: byteArrayOf()
+                            val name = RandomNameGenerator.generate()
+
+                            val originalOutput = Constants.Vault.DATA.resolve(name)
+                            val infoOutput = Constants.Vault.INFO.resolve(name)
+                            val thumbOutput = Constants.Vault.THUMBS.resolve(name)
+
+                            val infoBytes = buildProperties {
+                                setProperty(InfoKeys.ORIGINAL_PATH, originalOutput.absolutePath)
+                                setProperty(InfoKeys.PARENT_FOLDER, originalOutput.parent)
+                                setProperty(InfoKeys.FILE_NAME, originalOutput.nameWithoutExtension)
+                                setProperty(InfoKeys.FILE_EXTENSION, originalOutput.extension)
+                            }.encodeToByteArray()
+                            val thumbBytes = MediaThumbnailer.generate(file) ?: byteArrayOf()
 
                             SecureFileCipher.encryptBytes(
-                                inputBytes = thumb,
-                                outputFile = thumbOutputFile,
+                                inputBytes = infoBytes,
+                                outputFile = infoOutput,
+                                key = baseKey
+                            )
+
+                            SecureFileCipher.encryptBytes(
+                                inputBytes = thumbBytes,
+                                outputFile = thumbOutput,
                                 key = baseKey
                             )
 
                             SecureFileCipher.encryptFile(
                                 inputFile = file,
-                                outputFile = original,
+                                outputFile = originalOutput,
                                 key = baseKey
                             ) {
                                 encrypted++
                             }
                         }
 
-                        Log.d(TAG, "[${idx + 1}/${selectedFiles.size}] Encryption for: ${file.nameWithoutExtension} took $duration!")
+                        Log.d(
+                            TAG,
+                            "[${idx + 1}/${selectedFiles.size}] Encryption for: ${file.nameWithoutExtension} took $duration!"
+                        )
                     }
 
                     Log.d(TAG, "Encryption is done!")
@@ -158,7 +177,7 @@ class MainScreen : Screen {
 
                 val files = Constants.Vault.THUMBS.listFiles()
                     ?.filterNotNull()
-                    ?.filter { it.extension == "bin" }
+                    ?.filter { it.extension.isEmpty() }
                     ?: emptyList()
 
                 // Keep track of which files you've already decrypted
@@ -342,4 +361,10 @@ class MainScreen : Screen {
         )
     }
 
+}
+
+fun buildProperties(block: Properties.() -> Unit): String {
+    val properties = Properties()
+    block(properties)
+    return properties.toString()
 }
