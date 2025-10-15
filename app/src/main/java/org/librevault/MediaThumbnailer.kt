@@ -87,7 +87,7 @@ object MediaThumbnailer {
         return try {
             val targetMaxSize = 200_000
             val minSize = 60_000
-            val maxDimension = 640      // Optional upper cap for decompressing
+            val maxDimension = 600      // Optional upper cap for decompressing
             val outputStream = ByteArrayOutputStream()
             var quality = 70            // start lower for more efficient thumbnails
 

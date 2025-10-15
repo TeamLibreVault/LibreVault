@@ -60,6 +60,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import me.kys0.unifile.UniFile
 import org.librevault.Constants.Vault.InfoKeys
+import java.io.ByteArrayOutputStream
 import java.io.File
 import java.util.Properties
 import kotlin.time.measureTime
@@ -127,13 +128,15 @@ class MainScreen : Screen {
                             val infoOutput = Constants.Vault.INFO.resolve(name)
                             val thumbOutput = Constants.Vault.THUMBS.resolve(name)
 
-                            val infoBytes = buildProperties {
-                                setProperty(InfoKeys.ORIGINAL_PATH, originalOutput.absolutePath)
-                                setProperty(InfoKeys.PARENT_FOLDER, originalOutput.parent)
-                                setProperty(InfoKeys.FILE_NAME, originalOutput.nameWithoutExtension)
-                                setProperty(InfoKeys.FILE_EXTENSION, originalOutput.extension)
+                            val infoBytes = buildProperties(" Info") {
+                                setProperty(InfoKeys.ORIGINAL_PATH, file.absolutePath)
+                                setProperty(InfoKeys.PARENT_FOLDER, file.parent)
+                                setProperty(InfoKeys.FILE_NAME, file.nameWithoutExtension)
+                                setProperty(InfoKeys.FILE_EXTENSION, file.extension)
                             }.encodeToByteArray()
                             val thumbBytes = MediaThumbnailer.generate(file) ?: byteArrayOf()
+
+                            Log.d(TAG, "Your Info: $infoBytes")
 
                             SecureFileCipher.encryptBytes(
                                 inputBytes = infoBytes,
@@ -362,8 +365,12 @@ class MainScreen : Screen {
 
 }
 
-fun buildProperties(block: Properties.() -> Unit): String {
+fun buildProperties(comment: String = "", block: Properties.() -> Unit): String {
     val properties = Properties()
+    val out = ByteArrayOutputStream()
+
     block(properties)
-    return properties.toString()
+    properties.store(out, comment)
+
+    return out.toString("UTF-8")
 }
