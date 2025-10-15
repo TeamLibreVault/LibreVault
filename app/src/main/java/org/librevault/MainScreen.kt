@@ -1,11 +1,13 @@
 package org.librevault
 
 import android.util.Log
+import androidx.activity.compose.LocalActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.DrawableRes
 import androidx.annotation.StringRes
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -37,20 +39,23 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import cafe.adriel.voyager.core.screen.Screen
-import coil3.compose.AsyncImage
+import cafe.adriel.voyager.navigator.currentOrThrow
+import coil3.compose.rememberAsyncImagePainter
 import coil3.request.CachePolicy
 import coil3.request.ImageRequest
-import coil3.request.crossfade
-import coil3.size.Size
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
@@ -68,6 +73,7 @@ class MainScreen : Screen {
     @Composable
     override fun Content() {
         val context = LocalContext.current
+        val activity = LocalActivity.currentOrThrow
         val coroutine = rememberCoroutineScope()
         val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
         val selectedFiles = remember { mutableStateListOf<File>() }
@@ -87,14 +93,16 @@ class MainScreen : Screen {
 
         val images = remember { mutableStateListOf<ByteArray>() }
 
-        var encrypted = 0
-
         LaunchedEffect(key1 = Unit) {
-
+            Constants.Vault.apply {
+                if (ROOT.exists().not()) ROOT.mkdirs()
+                if (THUMBS.exists().not()) THUMBS.mkdirs()
+                if (DATA.exists().not()) DATA.mkdirs()
+            }
         }
 
         fun getBaseKey(): ByteArray {
-            val baseKeyFile = Constants.VAULT_FILE.resolve("base")
+            val baseKeyFile = Constants.Vault.ROOT.resolve("base")
             val baseKey: ByteArray = if (baseKeyFile.exists()) {
                 BaseKeyCrypto.decrypt(baseKeyFile)
             } else {
@@ -105,44 +113,80 @@ class MainScreen : Screen {
             return baseKey
         }
 
-        LaunchedEffect(key1 = selectedFiles.size) {
+        var encrypted by remember { mutableIntStateOf(0) }
+
+        LaunchedEffect(selectedFiles.size) {
             withContext(Dispatchers.IO) {
                 val baseKey = getBaseKey()
+
                 if (selectedFiles.isNotEmpty()) {
-                    selectedFiles.forEach { file ->
-                        val outputFile =
-                            Constants.VAULT_FILE.resolve(file.nameWithoutExtension + ".bin")
+                    selectedFiles.forEachIndexed { idx, file ->
                         val duration = measureTime {
+                            val original = Constants.Vault.DATA.resolve(file.nameWithoutExtension + ".bin")
+                            val thumbOutputFile = Constants.Vault.THUMBS.resolve(file.nameWithoutExtension + ".bin")
+                            val thumb = MediaThumbnailer.generate(file) ?: byteArrayOf()
+
+                            SecureFileCipher.encryptBytes(
+                                inputBytes = thumb,
+                                outputFile = thumbOutputFile,
+                                key = baseKey
+                            )
+
                             SecureFileCipher.encryptFile(
                                 inputFile = file,
-                                outputFile = outputFile,
-                                key = baseKey,
-                            ) { encrypted++ }
+                                outputFile = original,
+                                key = baseKey
+                            ) {
+                                encrypted++
+                            }
                         }
-                        Log.d(TAG, "Encryption for: ${file.nameWithoutExtension} took $duration!")
+
+                        Log.d(TAG, "[${idx + 1}/${selectedFiles.size}] Encryption for: ${file.nameWithoutExtension} took $duration!")
                     }
+
+                    Log.d(TAG, "Encryption is done!")
+
+                    selectedFiles.clear()
                     baseKey.fill(0)
                 }
             }
         }
 
         LaunchedEffect(key1 = encrypted) {
-            withContext(Dispatchers.Default + SupervisorJob()) {
+            withContext(Dispatchers.IO + SupervisorJob()) {
                 val baseKey = getBaseKey()
-                val files = Constants.VAULT_FILE.listFiles()?.filterNotNull()
+
+                val files = Constants.Vault.THUMBS.listFiles()
+                    ?.filterNotNull()
                     ?.filter { it.extension == "bin" }
                     ?: emptyList()
 
-                images.clear()
-                files.forEach { file ->
+                // Keep track of which files you've already decrypted
+                val existingNames = images.mapIndexedNotNull { index, _ ->
+                    Constants.Vault.THUMBS.listFiles()?.getOrNull(index)?.nameWithoutExtension
+                }.toSet()
+
+                // Only decrypt new files
+                val newFiles = files.filterNot { it.nameWithoutExtension in existingNames }
+
+                newFiles.forEachIndexed { idx, file ->
                     val time = measureTime {
-                        images += SecureFileCipher.decryptToBytes(
+                        val decryptedBytes = SecureFileCipher.decryptToBytes(
                             inputFile = file,
                             key = baseKey
                         )
+                        // Add dynamically on the main thread
+                        withContext(Dispatchers.Main) {
+                            images.add(decryptedBytes)
+                        }
                     }
-                    Log.d(TAG, "Decryption for: ${file.nameWithoutExtension} took $time!")
+
+                    Log.d(
+                        TAG,
+                        "[${idx + 1}/${newFiles.size}] Decryption for: ${file.nameWithoutExtension} took $time!"
+                    )
                 }
+
                 baseKey.fill(0)
             }
         }
@@ -239,26 +283,32 @@ class MainScreen : Screen {
                         .fillMaxSize()
                         .padding(innerPadding)
                 ) {
+                    val context = LocalContext.current
+
                     LazyVerticalStaggeredGrid(
                         columns = StaggeredGridCells.Fixed(2),
                         contentPadding = PaddingValues(8.dp),
                         verticalItemSpacing = 8.dp,
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        items(items = images, key = { it.hashCode() }) { image ->
+                        items(images) { image ->
                             Card(
                                 shape = MaterialTheme.shapes.medium,
                                 modifier = Modifier.fillMaxWidth()
                             ) {
-                                AsyncImage(
-                                    model = ImageRequest.Builder(LocalContext.current)
+                                val painter = rememberAsyncImagePainter(
+                                    model = ImageRequest.Builder(context)
                                         .data(image)
-                                        .crossfade(true)
-                                        .size(Size.ORIGINAL)
                                         .diskCachePolicy(CachePolicy.ENABLED)
                                         .memoryCachePolicy(CachePolicy.ENABLED)
-                                        .build(),
+                                        .build()
+                                )
+
+                                Image(
+                                    painter = painter,
                                     contentDescription = null,
+                                    modifier = Modifier.fillMaxWidth(),
+                                    contentScale = ContentScale.Crop
                                 )
                             }
                         }

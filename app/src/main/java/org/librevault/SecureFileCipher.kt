@@ -2,6 +2,7 @@ package org.librevault
 
 import java.io.BufferedInputStream
 import java.io.BufferedOutputStream
+import java.io.ByteArrayInputStream
 import java.io.File
 import java.io.FileInputStream
 import java.io.FileOutputStream
@@ -56,10 +57,62 @@ object SecureFileCipher {
         }
     }
 
-    /**
-     * Encrypts file using AES-GCM; writes: [salt][iv][ciphertext]
-     * key: ByteArray (the base key). Caller should zero the byte[] when done.
-     */
+    fun encryptBytes(
+        inputBytes: ByteArray,
+        outputFile: File,
+        key: ByteArray,
+        onProgress: (Float) -> Unit = {},
+        onComplete: () -> Unit = {}
+    ) {
+        val salt = ByteArray(SALT_SIZE).also { SecureRandom().nextBytes(it) }
+        val derivedKey = deriveKeyFromPassword(key, salt)
+
+        val iv = ByteArray(IV_SIZE).also { SecureRandom().nextBytes(it) }
+        val cipher = Cipher.getInstance(AES_MODE)
+
+        cipher.init(Cipher.ENCRYPT_MODE, derivedKey, GCMParameterSpec(GCM_TAG_LENGTH, iv))
+
+        val totalBytes = inputBytes.size.toFloat().coerceAtLeast(1f)
+        var processedBytes = 0L
+        var lastReportedProgress = 0f
+
+        ByteArrayInputStream(inputBytes).use { bais ->
+            BufferedInputStream(bais, BUFFER_SIZE).use { bufferedIn ->
+                FileOutputStream(outputFile).use { fos ->
+                    BufferedOutputStream(fos, BUFFER_SIZE).use { bufferedOut ->
+                        // write salt + iv
+                        bufferedOut.write(salt)
+                        bufferedOut.write(iv)
+
+                        val buffer = ByteArray(BUFFER_SIZE)
+                        var bytesRead: Int
+                        while (bufferedIn.read(buffer).also { bytesRead = it } != -1) {
+                            val encrypted = cipher.update(buffer, 0, bytesRead)
+                            if (encrypted != null) {
+                                bufferedOut.write(encrypted)
+                            }
+                            processedBytes += bytesRead
+                            val progress = processedBytes.toFloat() / totalBytes
+
+                            // report once every 1% change to avoid flooding
+                            if (progress - lastReportedProgress >= 0.01f || progress == 1f) {
+                                lastReportedProgress = progress
+                                onProgress(progress)
+                            }
+                        }
+
+                        // finalize encryption
+                        val finalBytes = cipher.doFinal()
+                        if (finalBytes != null) bufferedOut.write(finalBytes)
+                        bufferedOut.flush()
+                    }
+                }
+            }
+        }
+
+        onComplete()
+    }
+
     fun encryptFile(
         inputFile: File,
         outputFile: File,
@@ -95,6 +148,7 @@ object SecureFileCipher {
                             }
                             processedBytes += bytesRead.toLong()
                             val progress = processedBytes.toFloat() / totalBytes
+
                             // report once every 1% change to avoid flooding
                             if (progress - lastReportedProgress >= 0.01f || progress == 1f) {
                                 lastReportedProgress = progress
@@ -110,8 +164,6 @@ object SecureFileCipher {
                 }
             }
         }
-
-        key.fill(0)
 
         onComplete()
     }
@@ -170,9 +222,6 @@ object SecureFileCipher {
             }
         }
 
-        // clear sensitive temporary data
-        key.fill(0)
-
         onComplete()
     }
 
@@ -223,12 +272,6 @@ object SecureFileCipher {
                 if (finalBytes != null) outputStream.write(finalBytes)
 
                 val output = outputStream.toByteArray()
-
-                // clear sensitive temporary data
-                key.fill(0)
-                salt.fill(0)
-                iv.fill(0)
-                outputStream.reset() // drop buffer reference before GC
 
                 return output
             }
