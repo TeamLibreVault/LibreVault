@@ -129,6 +129,7 @@ class MainScreen : Screen {
                             val thumbOutput = Constants.Vault.THUMBS.resolve(name)
 
                             val infoBytes = buildProperties(" Info") {
+                                setProperty(InfoKeys.FILE_TYPE, FileType.of(file.extension)?.name)
                                 setProperty(InfoKeys.ORIGINAL_PATH, file.absolutePath)
                                 setProperty(InfoKeys.PARENT_FOLDER, file.parent)
                                 setProperty(InfoKeys.FILE_NAME, file.nameWithoutExtension)
@@ -363,6 +364,21 @@ class MainScreen : Screen {
         )
     }
 
+}
+
+enum class FileType {
+    IMAGE, VIDEO;
+
+    companion object {
+        private val imageExtensions = listOf("jpg", "jpeg", "png", "webp")
+        private val videoExtensions = listOf("mp4", "avi", "mkv", "mov", "wmv")
+
+        fun of(value: String): FileType? = when {
+            imageExtensions.contains(value.lowercase()) -> IMAGE
+            videoExtensions.contains(value.lowercase()) -> VIDEO
+            else -> null
+        }
+    }
 }
 
 fun buildProperties(comment: String = "", block: Properties.() -> Unit): String {

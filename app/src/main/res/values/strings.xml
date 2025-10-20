@@ -5,4 +5,5 @@
     <string name="folders">Folders</string>
     <string name="navigate_up">Navigate up</string>
     <string name="add">Add</string>
+    <string name="authenticate_to_unlock_the_vault">Authenticate to unlock the vault.</string>
 </resources>

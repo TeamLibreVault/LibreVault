@@ -15,6 +15,7 @@ object Constants {
             const val PARENT_FOLDER = "pf"
             const val FILE_NAME = "fn"
             const val FILE_EXTENSION = "fe"
+            const val FILE_TYPE = "ft"
         }
     }
 

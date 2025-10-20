@@ -12,6 +12,8 @@ composeBom = "2025.10.00"
 timber = "5.0.1"
 voyagerNavigator = "1.1.0-beta03"
 annotations = "26.0.2-1"
+biometric = "1.4.0-alpha04"
+appcompat = "1.7.1"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -33,6 +35,8 @@ androidx-compose-material3 = { group = "androidx.compose.material3", name = "mat
 annotations = { module = "org.jetbrains:annotations", version.ref = "annotations" }
 timber = { module = "com.jakewharton.timber:timber", version.ref = "timber" }
 voyager-navigator = { module = "cafe.adriel.voyager:voyager-navigator", version.ref = "voyagerNavigator" }
+androidx-biometric = { group = "androidx.biometric", name = "biometric", version.ref = "biometric" }
+androidx-appcompat = { group = "androidx.appcompat", name = "appcompat", version.ref = "appcompat" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
