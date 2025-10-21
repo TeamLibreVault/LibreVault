@@ -13,7 +13,8 @@ object Constants {
         object InfoKeys {
             const val ORIGINAL_PATH = "op"
             const val PARENT_FOLDER = "pf"
-            const val FILE_NAME = "fn"
+            const val ORIGINAL_FILE_NAME = "fn"
+            const val VAULT_FILE_NAME = "ofn"
             const val FILE_EXTENSION = "fe"
             const val FILE_TYPE = "ft"
         }

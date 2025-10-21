@@ -8,6 +8,7 @@ import androidx.annotation.DrawableRes
 import androidx.annotation.StringRes
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -57,6 +58,8 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import cafe.adriel.voyager.core.screen.Screen
+import cafe.adriel.voyager.navigator.LocalNavigator
+import cafe.adriel.voyager.navigator.currentOrThrow
 import coil3.compose.rememberAsyncImagePainter
 import coil3.request.CachePolicy
 import coil3.request.ImageRequest
@@ -79,6 +82,7 @@ class MainScreen : Screen {
     @Composable
     override fun Content() {
         val context = LocalContext.current
+        val navigator = LocalNavigator.currentOrThrow
         val coroutine = rememberCoroutineScope()
         val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
         val selectedFiles = remember { mutableStateListOf<File>() }
@@ -140,7 +144,8 @@ class MainScreen : Screen {
                                 setProperty(InfoKeys.FILE_TYPE, FileType.parse(file)?.name)
                                 setProperty(InfoKeys.ORIGINAL_PATH, file.absolutePath)
                                 setProperty(InfoKeys.PARENT_FOLDER, file.parent)
-                                setProperty(InfoKeys.FILE_NAME, file.nameWithoutExtension)
+                                setProperty(InfoKeys.ORIGINAL_FILE_NAME, file.nameWithoutExtension)
+                                setProperty(InfoKeys.VAULT_FILE_NAME, name)
                                 setProperty(InfoKeys.FILE_EXTENSION, file.extension)
                             }.encodeToByteArray()
                             val thumbBytes = MediaThumbnailer.generate(file) ?: byteArrayOf()
@@ -340,19 +345,24 @@ class MainScreen : Screen {
                                 val painter = rememberAsyncImagePainter(
                                     model = ImageRequest.Builder(context)
                                         .data(thumb)
-                                        .diskCachePolicy(CachePolicy.ENABLED)
-                                        .memoryCachePolicy(CachePolicy.ENABLED)
+                                        .diskCachePolicy(CachePolicy.DISABLED)
+                                        .memoryCachePolicy(CachePolicy.DISABLED)
                                         .build()
                                 )
 
                                 Box {
+                                    val vaultFileName = info.getProperty(InfoKeys.VAULT_FILE_NAME)
                                     val fileType =
                                         FileType.parse(info.getProperty(InfoKeys.FILE_TYPE))
 
                                     Image(
                                         painter = painter,
                                         contentDescription = null,
-                                        modifier = Modifier.fillMaxWidth(),
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .clickable {
+                                                navigator += PreviewScreen(vaultFileName)
+                                            },
                                         contentScale = ContentScale.Crop
                                     )
 
@@ -368,7 +378,7 @@ class MainScreen : Screen {
 
                                     Log.d(
                                         TAG,
-                                        "File type for: ${info.getProperty(InfoKeys.FILE_NAME)} is $fileType"
+                                        "File type for: ${info.getProperty(InfoKeys.ORIGINAL_FILE_NAME)} is $fileType"
                                     )
                                 }
                             }
@@ -403,27 +413,6 @@ class MainScreen : Screen {
         )
     }
 
-}
-
-enum class FileType {
-    IMAGE, VIDEO;
-
-    companion object {
-        private val imageExtensions = listOf("jpg", "jpeg", "png", "webp")
-        private val videoExtensions = listOf("mp4", "avi", "mkv", "mov", "wmv")
-
-        fun parse(value: File): FileType? = when {
-            imageExtensions.contains(value.extension.lowercase()) -> IMAGE
-            videoExtensions.contains(value.extension.lowercase()) -> VIDEO
-            else -> null
-        }
-
-        fun parse(value: String): FileType? = when (value) {
-            "IMAGE" -> IMAGE
-            "VIDEO" -> VIDEO
-            else -> null
-        }
-    }
 }
 
 fun buildProperties(comment: String = "", block: Properties.() -> Unit): String {

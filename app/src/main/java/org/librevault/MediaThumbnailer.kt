@@ -3,7 +3,6 @@ package org.librevault
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.media.MediaMetadataRetriever
-import android.media.ThumbnailUtils
 import androidx.core.graphics.scale
 import java.io.ByteArrayOutputStream
 import java.io.File
@@ -35,48 +34,54 @@ object MediaThumbnailer {
             val options = BitmapFactory.Options().apply { inJustDecodeBounds = true }
             BitmapFactory.decodeStream(FileInputStream(file), null, options)
 
-            val targetWidth = width ?: options.outWidth
-            val targetHeight = height ?: options.outHeight
-
-            options.inSampleSize = calculateInSampleSize(options, targetWidth, targetHeight)
+            // Load actual bitmap
             options.inJustDecodeBounds = false
+            val bitmap =
+                BitmapFactory.decodeStream(FileInputStream(file), null, options) ?: return null
 
-            val bitmap = BitmapFactory.decodeStream(FileInputStream(file), null, options) ?: return null
-            ThumbnailUtils.extractThumbnail(bitmap, targetWidth, targetHeight)
+            // Keep original dimensions but scale down if needed
+            val maxWidth = width ?: bitmap.width
+            val maxHeight = height ?: bitmap.height
+
+            val scale = minOf(
+                maxWidth.toFloat() / bitmap.width,
+                maxHeight.toFloat() / bitmap.height,
+                1f // don't upscale
+            )
+
+            if (scale < 1f) {
+                val newWidth = (bitmap.width * scale).toInt()
+                val newHeight = (bitmap.height * scale).toInt()
+                bitmap.scale(newWidth, newHeight)
+            } else bitmap
         } catch (e: IOException) {
             e.printStackTrace()
             null
         }
     }
 
-    private fun calculateInSampleSize(options: BitmapFactory.Options, reqWidth: Int, reqHeight: Int): Int {
-        val (height: Int, width: Int) = options.run { outHeight to outWidth }
-        var inSampleSize = 1
-        if (height > reqHeight || width > reqWidth) {
-            val halfHeight = height / 2
-            val halfWidth = width / 2
-            while (halfHeight / inSampleSize >= reqHeight && halfWidth / inSampleSize >= reqWidth) {
-                inSampleSize *= 2
-            }
-        }
-        return inSampleSize
-    }
+    private fun generateVideoThumbnail(file: File, width: Int?, height: Int?): Bitmap? = try {
+        val retriever = MediaMetadataRetriever()
+        retriever.setDataSource(file.absolutePath)
+        val frameBitmap = retriever.getFrameAtTime(0) ?: return null
+        retriever.release()
 
-    private fun generateVideoThumbnail(file: File, width: Int?, height: Int?): Bitmap? {
-        return try {
-            val retriever = MediaMetadataRetriever()
-            retriever.setDataSource(file.absolutePath)
-            val frameBitmap = retriever.getFrameAtTime(0) ?: return null
-            retriever.release()
+        val targetWidth = width ?: frameBitmap.width
+        val targetHeight = height ?: frameBitmap.height
 
-            val targetWidth = width ?: frameBitmap.width
-            val targetHeight = height ?: frameBitmap.height
-
-            ThumbnailUtils.extractThumbnail(frameBitmap, targetWidth, targetHeight)
-        } catch (e: Exception) {
-            e.printStackTrace()
-            null
-        }
+        val scale = minOf(
+            targetWidth.toFloat() / frameBitmap.width,
+            targetHeight.toFloat() / frameBitmap.height,
+            1f
+        )
+        if (scale < 1f) {
+            val newWidth = (frameBitmap.width * scale).toInt()
+            val newHeight = (frameBitmap.height * scale).toInt()
+            frameBitmap.scale(newWidth, newHeight)
+        } else frameBitmap
+    } catch (e: Exception) {
+        e.printStackTrace()
+        null
     }
 
     private fun bitmapToByteArray(

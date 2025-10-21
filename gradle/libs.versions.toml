@@ -14,6 +14,7 @@ voyagerNavigator = "1.1.0-beta03"
 annotations = "26.0.2-1"
 biometric = "1.4.0-alpha04"
 appcompat = "1.7.1"
+zoomable = "2.8.2"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -37,6 +38,7 @@ timber = { module = "com.jakewharton.timber:timber", version.ref = "timber" }
 voyager-navigator = { module = "cafe.adriel.voyager:voyager-navigator", version.ref = "voyagerNavigator" }
 androidx-biometric = { group = "androidx.biometric", name = "biometric", version.ref = "biometric" }
 androidx-appcompat = { group = "androidx.appcompat", name = "appcompat", version.ref = "appcompat" }
+zoomable = { group = "net.engawapg.lib", name = "zoomable", version.ref = "zoomable" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
