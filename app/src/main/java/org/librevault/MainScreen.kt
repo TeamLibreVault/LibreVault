@@ -9,12 +9,14 @@ import androidx.annotation.StringRes
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -41,10 +43,14 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
@@ -90,7 +96,9 @@ class MainScreen : Screen {
             )
         }
 
-        val images = remember { mutableStateListOf<ByteArray>() }
+        val vaultData = remember { mutableStateListOf<Pair<ByteArray, Properties>>() }
+        var listFilter by remember { mutableStateOf(FileType.IMAGE.name) }
+
 
         LaunchedEffect(key1 = Unit) {
             Constants.Vault.apply {
@@ -129,7 +137,7 @@ class MainScreen : Screen {
                             val thumbOutput = Constants.Vault.THUMBS.resolve(name)
 
                             val infoBytes = buildProperties(" Info") {
-                                setProperty(InfoKeys.FILE_TYPE, FileType.of(file.extension)?.name)
+                                setProperty(InfoKeys.FILE_TYPE, FileType.parse(file)?.name)
                                 setProperty(InfoKeys.ORIGINAL_PATH, file.absolutePath)
                                 setProperty(InfoKeys.PARENT_FOLDER, file.parent)
                                 setProperty(InfoKeys.FILE_NAME, file.nameWithoutExtension)
@@ -184,7 +192,7 @@ class MainScreen : Screen {
                     ?: emptyList()
 
                 // Keep track of which files you've already decrypted
-                val existingNames = images.mapIndexedNotNull { index, _ ->
+                val existingNames = vaultData.mapIndexedNotNull { index, _ ->
                     Constants.Vault.THUMBS.listFiles()?.getOrNull(index)?.nameWithoutExtension
                 }.toSet()
 
@@ -197,9 +205,14 @@ class MainScreen : Screen {
                             inputFile = file,
                             key = baseKey
                         )
+                        val decryptedInfo = SecureFileCipher.decryptToBytes(
+                            inputFile = Constants.Vault.INFO.resolve(file.nameWithoutExtension),
+                            key = baseKey
+                        ).decodeToString().toProperties()
+
                         // Add dynamically on the main thread
                         withContext(Dispatchers.Main) {
-                            images.add(decryptedBytes)
+                            vaultData.add(decryptedBytes to decryptedInfo)
                         }
                     }
 
@@ -230,9 +243,12 @@ class MainScreen : Screen {
                             DrawerItem(
                                 iconRes = R.drawable.baseline_image_24,
                                 labelRes = R.string.photos,
-                                selected = true,
+                                selected = listFilter == FileType.IMAGE.name,
                             ) {
-
+                                coroutine.launch {
+                                    listFilter = FileType.IMAGE.name
+                                    drawerState.close()
+                                }
                             }
                         }
 
@@ -240,9 +256,12 @@ class MainScreen : Screen {
                             DrawerItem(
                                 iconRes = R.drawable.baseline_play_circle_outline_24,
                                 labelRes = R.string.videos,
-                                selected = false,
+                                selected = listFilter == FileType.VIDEO.name,
                             ) {
-
+                                coroutine.launch {
+                                    listFilter = FileType.VIDEO.name
+                                    drawerState.close()
+                                }
                             }
                         }
 
@@ -278,8 +297,8 @@ class MainScreen : Screen {
                                 }
                             ) {
                                 Icon(
-                                    painter = painterResource(R.drawable.baseline_menu_24),
-                                    contentDescription = stringResource(R.string.navigate_up)
+                                    painter = painterResource(id = R.drawable.baseline_menu_24),
+                                    contentDescription = stringResource(id = R.string.navigate_up)
                                 )
                             }
                         }
@@ -313,25 +332,45 @@ class MainScreen : Screen {
                         verticalItemSpacing = 8.dp,
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        items(images) { image ->
+                        items(vaultData.filter { it.second.getProperty(InfoKeys.FILE_TYPE) == listFilter }) { (thumb, info) ->
                             Card(
                                 shape = MaterialTheme.shapes.medium,
                                 modifier = Modifier.fillMaxWidth()
                             ) {
                                 val painter = rememberAsyncImagePainter(
                                     model = ImageRequest.Builder(context)
-                                        .data(image)
+                                        .data(thumb)
                                         .diskCachePolicy(CachePolicy.ENABLED)
                                         .memoryCachePolicy(CachePolicy.ENABLED)
                                         .build()
                                 )
 
-                                Image(
-                                    painter = painter,
-                                    contentDescription = null,
-                                    modifier = Modifier.fillMaxWidth(),
-                                    contentScale = ContentScale.Crop
-                                )
+                                Box {
+                                    val fileType =
+                                        FileType.parse(info.getProperty(InfoKeys.FILE_TYPE))
+
+                                    Image(
+                                        painter = painter,
+                                        contentDescription = null,
+                                        modifier = Modifier.fillMaxWidth(),
+                                        contentScale = ContentScale.Crop
+                                    )
+
+                                    if (fileType == FileType.VIDEO) Image(
+                                        modifier = Modifier
+                                            .size(76.dp)
+                                            .align(Alignment.Center),
+                                        painter = painterResource(R.drawable.baseline_play_arrow_24),
+                                        contentScale = ContentScale.Crop,
+                                        colorFilter = ColorFilter.tint(Color.White),
+                                        contentDescription = null
+                                    )
+
+                                    Log.d(
+                                        TAG,
+                                        "File type for: ${info.getProperty(InfoKeys.FILE_NAME)} is $fileType"
+                                    )
+                                }
                             }
                         }
                     }
@@ -373,9 +412,15 @@ enum class FileType {
         private val imageExtensions = listOf("jpg", "jpeg", "png", "webp")
         private val videoExtensions = listOf("mp4", "avi", "mkv", "mov", "wmv")
 
-        fun of(value: String): FileType? = when {
-            imageExtensions.contains(value.lowercase()) -> IMAGE
-            videoExtensions.contains(value.lowercase()) -> VIDEO
+        fun parse(value: File): FileType? = when {
+            imageExtensions.contains(value.extension.lowercase()) -> IMAGE
+            videoExtensions.contains(value.extension.lowercase()) -> VIDEO
+            else -> null
+        }
+
+        fun parse(value: String): FileType? = when (value) {
+            "IMAGE" -> IMAGE
+            "VIDEO" -> VIDEO
             else -> null
         }
     }
@@ -389,4 +434,10 @@ fun buildProperties(comment: String = "", block: Properties.() -> Unit): String 
     properties.store(out, comment)
 
     return out.toString("UTF-8")
+}
+
+fun String.toProperties(): Properties {
+    val properties = Properties()
+    properties.load(this.byteInputStream())
+    return properties
 }
