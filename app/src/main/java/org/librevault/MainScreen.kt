@@ -113,18 +113,6 @@ class MainScreen : Screen {
             }
         }
 
-        fun getBaseKey(): ByteArray {
-            val baseKeyFile = Constants.Vault.ROOT.resolve("base")
-            val baseKey: ByteArray = if (baseKeyFile.exists()) {
-                BaseKeyCrypto.decrypt(baseKeyFile)
-            } else {
-                val key = SecureFileCipher.generateBaseKey() // should return ByteArray
-                BaseKeyCrypto.encrypt(key, baseKeyFile)
-                key
-            }
-            return baseKey
-        }
-
         var encrypted by remember { mutableIntStateOf(0) }
 
         LaunchedEffect(selectedFiles.size) {
@@ -361,7 +349,7 @@ class MainScreen : Screen {
                                         modifier = Modifier
                                             .fillMaxWidth()
                                             .clickable {
-                                                navigator += PreviewScreen(vaultFileName)
+                                                PreviewActivity.startIntent(context, vaultFileName)
                                             },
                                         contentScale = ContentScale.Crop
                                     )

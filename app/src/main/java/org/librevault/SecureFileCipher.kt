@@ -3,6 +3,7 @@ package org.librevault
 import java.io.BufferedInputStream
 import java.io.BufferedOutputStream
 import java.io.ByteArrayInputStream
+import java.io.ByteArrayOutputStream
 import java.io.File
 import java.io.FileInputStream
 import java.io.FileOutputStream
@@ -251,7 +252,7 @@ object SecureFileCipher {
                 cipher.init(Cipher.DECRYPT_MODE, derivedKey, GCMParameterSpec(GCM_TAG_LENGTH, iv))
 
                 // use a single expandable buffer instead of chunk list
-                val outputStream = java.io.ByteArrayOutputStream(BUFFER_SIZE)
+                val outputStream = ByteArrayOutputStream(BUFFER_SIZE)
 
                 val buffer = ByteArray(BUFFER_SIZE)
                 var bytesRead: Int
