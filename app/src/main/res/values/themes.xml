@@ -2,4 +2,10 @@
 <resources>
 
     <style name="Theme.LibreVault" parent="Theme.AppCompat.Light.NoActionBar" />
+
+    <style name="Theme.LibreVault.Splash" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenBackground">?attr/background</item>
+        <item name="windowSplashScreenAnimatedIcon">@mipmap/ic_launcher_foreground</item>
+        <item name="postSplashScreenTheme">@style/Theme.LibreVault</item>
+    </style>
 </resources>
