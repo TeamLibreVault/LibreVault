@@ -13,12 +13,13 @@
             android:dataExtractionRules="@xml/data_extraction_rules"
             android:fullBackupContent="@xml/backup_rules"
             android:icon="@mipmap/ic_launcher"
+            android:name=".App"
             android:label="@string/app_name"
             android:roundIcon="@mipmap/ic_launcher"
             android:supportsRtl="true"
             android:theme="@style/Theme.LibreVault">
         <activity
-                android:name=".MainActivity"
+                android:name=".presentation.activities.main.MainActivity"
                 android:exported="true"
                 android:theme="@style/Theme.LibreVault.Splash">
             <intent-filter>
@@ -29,7 +30,7 @@
         </activity>
 
         <activity
-                android:name=".PreviewActivity"
+                android:name=".presentation.activities.preview.PreviewActivity"
                 android:exported="false"
                 android:theme="@android:style/Theme.Material.Light.NoActionBar" />
     </application>

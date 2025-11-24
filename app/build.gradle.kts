@@ -1,3 +1,5 @@
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
@@ -36,8 +38,10 @@ android {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
     }
-    kotlinOptions {
-        jvmTarget = "11"
+    kotlin {
+        compilerOptions {
+            jvmTarget.set(JvmTarget.JVM_11)
+        }
     }
     buildFeatures {
         compose = true
@@ -56,13 +60,16 @@ dependencies {
     implementation(libs.androidx.compose.material3)
     implementation(libs.voyager.navigator)
     implementation(libs.androidx.lifecycle.viewmodel.compose)
-    implementation(project(":unifile"))
     implementation(libs.coil.compose)
     implementation(libs.androidx.biometric)
     implementation(libs.androidx.appcompat)
     implementation(libs.zoomable)
     implementation(libs.androidx.core.splashscreen)
     implementation(libs.accompanist.systemuicontroller)
+    implementation(libs.koin.core)
+    implementation(project.dependencies.platform("io.insert-koin:koin-bom:4.1.1"))
+    implementation(libs.koin.android)
+    implementation(libs.koin.androidx.compose)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
