@@ -67,19 +67,15 @@ class FilePermissionManager(private val activity: AppCompatActivity) {
     /**
      * Check whether the permission is already granted.
      */
-    fun isPermissionGranted(): Boolean {
-        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            hasManageAllFilesPermission()
-        } else {
-            hasLegacyStoragePermission()
-        }
+    fun isPermissionGranted(): Boolean = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+        hasManageAllFilesPermission()
+    } else {
+        hasLegacyStoragePermission()
     }
 
-    private fun hasManageAllFilesPermission(): Boolean {
-        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            Environment.isExternalStorageManager()
-        } else true
-    }
+    private fun hasManageAllFilesPermission(): Boolean = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+        Environment.isExternalStorageManager()
+    } else true
 
     private fun hasLegacyStoragePermission(): Boolean {
         return ContextCompat.checkSelfPermission(
