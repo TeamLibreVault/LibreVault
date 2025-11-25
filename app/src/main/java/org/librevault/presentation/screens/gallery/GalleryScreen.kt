@@ -77,7 +77,7 @@ import org.librevault.presentation.aliases.gallery.ThumbnailsList
 import org.librevault.presentation.events.gallery.GalleryEvent
 import org.librevault.presentation.screens.components.FailureDisplay
 import org.librevault.presentation.screens.components.LoadingIndicator
-import org.librevault.presentation.screens.gallery.components.MediaPickerDialog
+import org.librevault.presentation.screens.gallery.components.media_picker.MediaPickerDialog
 import org.librevault.presentation.viewmodels.gallery.GalleryViewModel
 
 private const val TAG = "GalleryScreen"

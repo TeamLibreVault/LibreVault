@@ -10,8 +10,6 @@ import java.io.File
 private const val TAG = "MediaThumbnailer"
 
 class MediaThumbnailer(
-    private val targetWidth: Int = 400,
-    private val targetHeight: Int = 400,
     private val format: Bitmap.CompressFormat = Bitmap.CompressFormat.JPEG,
     private val initialQuality: Int = 50,
 ) {
@@ -30,12 +28,7 @@ class MediaThumbnailer(
             if (bitmap == null)
                 return null
 
-            val resized = Bitmap.createScaledBitmap(
-                bitmap,
-                targetWidth,
-                targetHeight,
-                true
-            )
+            val resized = bitmap.cropSquare()
 
             @Suppress("SpellCheckingInspection")
             val baos = ByteArrayOutputStream()
@@ -72,5 +65,19 @@ class MediaThumbnailer(
         return lower.endsWith(".mp4") || lower.endsWith(".avi") ||
                 lower.endsWith(".mkv") || lower.endsWith(".webm") ||
                 lower.endsWith(".3gp") || lower.endsWith(".mov")
+    }
+
+    private fun Bitmap.cropSquare(): Bitmap {
+        val bitmap = this
+
+        val width = bitmap.width
+        val height = bitmap.height
+
+        val size = minOf(width, height)
+
+        val x = (width - size) / 2
+        val y = (height - size) / 2
+
+        return Bitmap.createBitmap(bitmap, x, y, size, size)
     }
 }

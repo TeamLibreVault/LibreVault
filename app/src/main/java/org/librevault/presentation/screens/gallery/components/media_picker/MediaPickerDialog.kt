@@ -1,9 +1,8 @@
-package org.librevault.presentation.screens.gallery.components
+package org.librevault.presentation.screens.gallery.components.media_picker
 
 import android.content.ContentUris
 import android.content.Context
 import android.graphics.Bitmap
-import android.net.Uri
 import android.provider.MediaStore
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.border
@@ -44,10 +43,10 @@ import androidx.compose.ui.window.Dialog
 import coil3.compose.rememberAsyncImagePainter
 import coil3.request.CachePolicy
 import coil3.request.ImageRequest
-import coil3.request.allowHardware
 import coil3.request.bitmapConfig
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import org.librevault.presentation.screens.gallery.components.media_picker.model.MediaFile
 import java.io.File
 
 @Composable
@@ -131,11 +130,10 @@ fun MediaPickerDialog(
                                 val imagePainter = rememberAsyncImagePainter(
                                     model = ImageRequest.Builder(context)
                                         .data(media.uri)
-                                        .size(128) // or Size.ORIGINAL with .scale, but 128px keeps things lightweight
-                                        .allowHardware(false) // optional: softer on memory
+                                        .size(128)
                                         .diskCachePolicy(CachePolicy.DISABLED)
                                         .memoryCachePolicy(CachePolicy.DISABLED)
-                                        .bitmapConfig(Bitmap.Config.RGB_565) // lower quality, fewer bits
+                                        .bitmapConfig(Bitmap.Config.RGB_565)
                                         .build()
                                 )
 
@@ -176,12 +174,7 @@ fun MediaPickerDialog(
     }
 }
 
-data class MediaFile(
-    val uri: Uri,
-    val file: File?,
-)
-
-suspend fun loadMediaFolders(context: Context): List<String> = withContext(Dispatchers.IO) {
+private suspend fun loadMediaFolders(context: Context): List<String> = withContext(Dispatchers.IO) {
     val folders = mutableSetOf<String>()
     val projection = arrayOf(MediaStore.Images.Media.DATA)
     context.contentResolver.query(
@@ -201,7 +194,7 @@ suspend fun loadMediaFolders(context: Context): List<String> = withContext(Dispa
     folders.toList()
 }
 
-suspend fun loadMediaInFolder(context: Context, folderName: String): List<MediaFile> =
+private suspend fun loadMediaInFolder(context: Context, folderName: String): List<MediaFile> =
     withContext(Dispatchers.IO) {
         val mediaFiles = mutableListOf<MediaFile>()
         val projection = arrayOf(MediaStore.Images.Media._ID, MediaStore.Images.Media.DATA)

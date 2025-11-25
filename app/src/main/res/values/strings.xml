@@ -8,4 +8,6 @@
     <string name="authenticate_to_unlock_the_vault">Authenticate to unlock the vault.</string>
     <string name="restore_file">Restore file</string>
     <string name="encrypting">Encrypting...</string>
+    <string name="unlock">Unlock</string>
+    <string name="authenticate_to_continue">Authenticate to continue</string>
 </resources>
