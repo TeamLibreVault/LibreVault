@@ -1,11 +1,11 @@
-package org.librevault.data.use_case
+package org.librevault.domain.use_case.vault
 
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import org.librevault.domain.model.vault.VaultItemInfo
-import org.librevault.domain.repository.VaultRepository
+import org.librevault.domain.repository.vault.VaultRepository
 import java.io.File
 
 class AddItems(

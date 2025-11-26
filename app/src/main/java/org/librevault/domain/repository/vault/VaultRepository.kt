@@ -1,4 +1,4 @@
-package org.librevault.domain.repository
+package org.librevault.domain.repository.vault
 
 import kotlinx.coroutines.flow.Flow
 import org.librevault.domain.model.vault.VaultItemContent
@@ -19,4 +19,3 @@ interface VaultRepository {
 
     suspend fun loadContentById(id: String): VaultItemContent
 }
-

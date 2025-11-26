@@ -1,4 +1,4 @@
-package org.librevault.presentation.events.gallery
+package org.librevault.presentation.events
 
 import java.io.File
 

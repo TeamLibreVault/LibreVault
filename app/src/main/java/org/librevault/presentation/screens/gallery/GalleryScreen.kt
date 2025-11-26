@@ -74,11 +74,11 @@ import org.librevault.domain.model.vault.aliases.resolveVaultFiles
 import org.librevault.presentation.activities.preview.PreviewActivity
 import org.librevault.presentation.aliases.gallery.ThumbnailInfo
 import org.librevault.presentation.aliases.gallery.ThumbnailsList
-import org.librevault.presentation.events.gallery.GalleryEvent
+import org.librevault.presentation.events.GalleryEvent
 import org.librevault.presentation.screens.components.FailureDisplay
 import org.librevault.presentation.screens.components.LoadingIndicator
 import org.librevault.presentation.screens.gallery.components.media_picker.MediaPickerDialog
-import org.librevault.presentation.viewmodels.gallery.GalleryViewModel
+import org.librevault.presentation.viewmodels.GalleryViewModel
 
 private const val TAG = "GalleryScreen"
 

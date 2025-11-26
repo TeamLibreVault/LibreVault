@@ -1,4 +1,4 @@
-package org.librevault.data.repository
+package org.librevault.data.repository.vault.utils
 
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory

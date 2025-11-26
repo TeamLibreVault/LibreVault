@@ -23,7 +23,10 @@ import org.librevault.R
 abstract class BaseLockActivity : AppCompatActivity() {
 
     private val handler = Handler(Looper.getMainLooper())
-    private var autoLockTimeout = 2000L
+
+    protected abstract var autoLockEnabled: Boolean
+    protected abstract var autoLockTimeout: Long
+
     private val lockRunnable = Runnable { lockApp() }
 
     private val executor by lazy { ContextCompat.getMainExecutor(this) }
@@ -42,6 +45,7 @@ abstract class BaseLockActivity : AppCompatActivity() {
                 handler.removeCallbacks(lockRunnable)
                 tryShowBiometric()
             }
+
             else -> {}
         }
     }

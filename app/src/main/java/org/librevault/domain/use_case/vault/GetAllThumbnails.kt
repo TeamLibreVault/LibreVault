@@ -1,4 +1,4 @@
-package org.librevault.data.use_case
+package org.librevault.domain.use_case.vault
 
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -9,7 +9,7 @@ import kotlinx.coroutines.flow.onCompletion
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.withContext
 import org.librevault.domain.model.vault.VaultItemContent
-import org.librevault.domain.repository.VaultRepository
+import org.librevault.domain.repository.vault.VaultRepository
 
 class GetAllThumbnails(
     private val vaultRepository: VaultRepository,
