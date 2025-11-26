@@ -1,4 +1,4 @@
-package org.librevault.presentation.aliases.gallery
+package org.librevault.presentation.aliases
 
 import org.librevault.common.state.UiState
 import org.librevault.domain.model.vault.VaultItemContent

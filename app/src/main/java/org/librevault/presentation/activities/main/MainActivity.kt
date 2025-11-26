@@ -6,7 +6,7 @@ import androidx.activity.enableEdgeToEdge
 import androidx.compose.runtime.LaunchedEffect
 import cafe.adriel.voyager.navigator.CurrentScreen
 import cafe.adriel.voyager.navigator.Navigator
-import org.koin.androidx.viewmodel.ext.android.getViewModel
+import org.koin.androidx.viewmodel.ext.android.viewModel
 import org.librevault.R
 import org.librevault.common.activity.base.BaseLockActivity
 import org.librevault.common.permissions.FilePermissionManager
@@ -19,7 +19,7 @@ import org.librevault.utils.lazyVar
 
 class MainActivity : BaseLockActivity() {
 
-    private val viewModel = getViewModel<MainViewModel>()
+    private val viewModel by viewModel<MainViewModel>()
     private val fpManager by lazy { FilePermissionManager(this) }
 
     override var autoLockEnabled: Boolean by lazyVar { viewModel.autoLockEnabled.value }

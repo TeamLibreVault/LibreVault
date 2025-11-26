@@ -1,7 +1,7 @@
 package org.librevault.domain.model.vault
 
-import org.librevault.domain.model.gallery.FileType
 import org.librevault.common.vault_consts.VaultInfoKeys
+import org.librevault.domain.model.gallery.FileType
 import org.librevault.utils.buildProperties
 import org.librevault.utils.emptyString
 import org.librevault.utils.toProperties
@@ -12,8 +12,9 @@ data class VaultItemInfo(
     val filePath: String,
     val fileName: String,
     val fileExtension: String,
+    val fileSize: Long,
     val parentFolder: String,
-    val dateAdded: Long = 0,
+    val dateAdded: Long,
     val fileType: FileType,
 ) {
     override fun toString(): String = buildProperties("Info") {
@@ -25,10 +26,18 @@ data class VaultItemInfo(
             VaultInfoKeys.ORIGINAL_PATH,
             filePath
         )
+        setProperty(
+            VaultInfoKeys.FILE_SIZE,
+            fileSize.toString()
+        )
         setProperty(VaultInfoKeys.PARENT_FOLDER, parentFolder)
         setProperty(
             VaultInfoKeys.ORIGINAL_FILE_NAME,
             fileName
+        )
+        setProperty(
+            VaultInfoKeys.DATE_ADDED,
+            dateAdded.toString()
         )
         setProperty(VaultInfoKeys.VAULT_FILE_NAME, id)
         setProperty(
@@ -47,6 +56,7 @@ data class VaultItemInfo(
             filePath = emptyString(),
             fileName = emptyString(),
             fileExtension = emptyString(),
+            fileSize = 0L,
             parentFolder = emptyString(),
             dateAdded = System.currentTimeMillis(),
             fileType = FileType.IMAGE
@@ -57,8 +67,9 @@ data class VaultItemInfo(
             filePath = NOT_FOUND,
             fileName = NOT_FOUND,
             fileExtension = NOT_FOUND,
+            fileSize = -1L,
             parentFolder = NOT_FOUND,
-            dateAdded = -1,
+            dateAdded = -1L,
             fileType = FileType.ERROR
         )
     }

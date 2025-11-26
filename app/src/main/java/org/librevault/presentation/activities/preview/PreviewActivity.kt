@@ -3,17 +3,21 @@ package org.librevault.presentation.activities.preview
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
-import android.widget.Toast
+import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -25,8 +29,8 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -36,67 +40,77 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.dp
 import coil3.compose.rememberAsyncImagePainter
 import coil3.request.CachePolicy
 import coil3.request.ImageRequest
 import com.google.accompanist.systemuicontroller.rememberSystemUiController
 import net.engawapg.lib.zoomable.rememberZoomState
 import net.engawapg.lib.zoomable.zoomable
+import org.koin.androidx.viewmodel.ext.android.viewModel
 import org.librevault.R
-import org.librevault.common.vault_consts.VaultInfoKeys
+import org.librevault.common.state.UiState
+import org.librevault.presentation.aliases.MediaContent
+import org.librevault.presentation.aliases.MediaInfo
+import org.librevault.presentation.events.PreviewEvent
 import org.librevault.presentation.theme.LibreVaultTheme
-import java.io.File
-import java.util.Properties
+import org.librevault.presentation.viewmodels.PreviewViewModel
+
+private const val TAG = "PreviewActivity"
 
 class PreviewActivity : ComponentActivity() {
+
+    private val viewModel by viewModel<PreviewViewModel>()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
-        val fileName = intent.getStringExtra("fileName")
-            ?: throw IllegalStateException("No file name provided")
+        val mediaId = intent.getStringExtra(MEDIA_ID)?.ifEmpty {
+            throw IllegalStateException("No media id provided")
+        }
+
+        viewModel.onEvent(PreviewEvent.LoadMediaInfo(mediaId))
+        viewModel.onEvent(PreviewEvent.DecryptMedia(mediaId))
+
+        Log.d(TAG, "onCreate: Id = $mediaId")
 
         setContent {
-            var fileBytes by remember { mutableStateOf<ByteArray?>(null) }
-            var progress by remember { mutableFloatStateOf(0f) }
-            var fileInfo = Properties()
-
             LibreVaultTheme {
-                /*LaunchedEffect(key1 = Unit) {
-                    val baseKey = getBaseKey()
+                val mediaInfoState by viewModel.mediaInfoState.collectAsState()
+                val mediaContentState by viewModel.mediaContentState.collectAsState()
+                val errorInfoDialog by viewModel.showErrorInfoDialogState.collectAsState()
 
-                    val fileInput = VaultDirs.DATA.resolve(fileName)
-                    val infoInput = VaultDirs.INFO.resolve(fileName)
+                var mediaInfo by remember { mutableStateOf(MediaInfo.placeholder()) }
 
-                    if (fileInput.exists().not())
-                        throw IllegalStateException("File not found: $fileInput")
-
-                    if (infoInput.exists().not())
-                        throw IllegalStateException("Info not found: $infoInput")
-
-                    fileBytes = SecureFileCipher.decryptToBytes(
-                        inputFile = fileInput,
-                        key = baseKey
-                    ) {
-                        progress = it
+                when (val state = mediaInfoState) {
+                    is UiState.Error -> {
+                        viewModel.onEvent(PreviewEvent.ShowErrorInfoDialog)
+                        mediaInfo = MediaInfo.error()
+                        Log.e(TAG, "onCreate: Error loading media info", state.throwable)
                     }
 
-                    fileInfo = SecureFileCipher.decryptToBytes(
-                        inputFile = infoInput,
-                        key = baseKey
-                    ).decodeToString().toProperties()
+                    is UiState.Success<MediaInfo> -> {
+                        mediaInfo = state.data
+                        Log.d(TAG, "onCreate: Media info loaded: $mediaInfo")
+                    }
 
-                    baseKey.fill(0)
+                    else -> Unit
                 }
 
-                ImagePreview(
-                    fileBytes = fileBytes ?: byteArrayOf(),
-                    fileInfo = fileInfo,
-                    progress = progress,
-                ) {
-                    finishActivity(0)
-                }*/
+                when (val state = mediaContentState) {
+                    is UiState.Error -> ErrorLoadingImage(state.throwable)
+                    UiState.Idle -> LoadingImage()
+                    UiState.Loading -> LoadingImage()
+                    is UiState.Success<MediaContent> -> ImagePreview(
+                        mediaInfo = mediaInfo,
+                        mediaContent = state.data,
+                        onBackClick = ::finish
+                    )
+                }
+
+                if (errorInfoDialog) ErrorLoadingInfoDialog { viewModel.onEvent(PreviewEvent.HideErrorInfoDialog) }
             }
         }
     }
@@ -105,14 +119,15 @@ class PreviewActivity : ComponentActivity() {
     @Suppress("DEPRECATION")
     @Composable
     private fun ImagePreview(
-        fileBytes: ByteArray,
-        fileInfo: Properties?,
-        progress: Float,
+        mediaInfo: MediaInfo,
+        mediaContent: MediaContent,
         onBackClick: () -> Unit,
     ) {
+        val detailsDialog by viewModel.showDetailsDialogState.collectAsState()
+
         val image = rememberAsyncImagePainter(
             model = ImageRequest.Builder(this)
-                .data(fileBytes)
+                .data(mediaContent.data)
                 .diskCachePolicy(CachePolicy.DISABLED)
                 .memoryCachePolicy(CachePolicy.DISABLED)
                 .build()
@@ -120,7 +135,6 @@ class PreviewActivity : ComponentActivity() {
         val zoomState = rememberZoomState()
 
         var isUiVisible by remember { mutableStateOf(true) }
-        var detailsDialog by remember { mutableStateOf(false) }
 
         // Handles system UI visibility (status + nav bars)
         val systemUiController = rememberSystemUiController()
@@ -134,8 +148,7 @@ class PreviewActivity : ComponentActivity() {
                     TopAppBar(
                         title = {
                             Text(
-                                text = fileInfo?.getProperty(VaultInfoKeys.ORIGINAL_FILE_NAME)
-                                    ?: "Image Preview",
+                                text = mediaInfo.fileName,
                                 maxLines = 1,
                             )
                         },
@@ -148,29 +161,27 @@ class PreviewActivity : ComponentActivity() {
                             }
                         },
                         actions = {
-                            IconButton(
-                                onClick = { detailsDialog = true }
-                            ) {
+                            IconButton(onClick = {
+                                viewModel.onEvent(
+                                    event = PreviewEvent.ShowDetailsDialog(
+                                        mediaInfo = mediaInfo
+                                    )
+                                )
+                            }) {
                                 Icon(
                                     painter = painterResource(R.drawable.outline_info_24),
-                                    contentDescription = "Details"
+                                    contentDescription = stringResource(R.string.details)
                                 )
                             }
 
                             IconButton(
                                 onClick = {
-                                    val originalPath =
-                                        fileInfo?.getProperty(VaultInfoKeys.ORIGINAL_PATH)!!
-                                    val originalFile = File(originalPath)
-
-                                    originalFile.writeBytes(fileBytes)
-
-                                    Toast.makeText(
-                                        this@PreviewActivity,
-                                        "Image restored to: $originalPath",
-                                        Toast.LENGTH_SHORT
+                                    viewModel.onEvent(
+                                        event = PreviewEvent.RestoreImage(
+                                            mediaInfo = mediaInfo,
+                                            mediaContent = mediaContent
+                                        )
                                     )
-                                        .show()
                                 }
                             ) {
                                 Icon(
@@ -187,66 +198,117 @@ class PreviewActivity : ComponentActivity() {
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(innerPadding)
+
             ) {
-                val interaction = remember { MutableInteractionSource() }
                 Image(
                     modifier = Modifier
                         .fillMaxSize()
                         .zoomable(zoomState)
-                        .clickable(interactionSource = null, indication = null) {
-                            isUiVisible = !isUiVisible
-                        },
+                        .clickable(
+                            interactionSource = null,
+                            indication = null,
+                            onClick = { isUiVisible = !isUiVisible }
+                        ),
                     painter = image,
-                    contentDescription = fileInfo?.getProperty(VaultInfoKeys.ORIGINAL_FILE_NAME),
+                    contentDescription = mediaInfo.fileName,
                     contentScale = ContentScale.Fit
                 )
-
-                // Loading progress indicator
-                if (progress < 1f) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.align(Alignment.Center),
-                        progress = { progress },
-                        color = Color.White
-                    )
-                }
             }
         }
 
-        if (detailsDialog) AlertDialog(
-            onDismissRequest = { detailsDialog = false },
-            title = {
-                Text(text = "Image Details:")
-            },
-            text = {
-                /*val info = VaultItemInfo.placeholder()
-                Text(
-                    """
-                    Original path: ${info.}
-                    Original file name: ${info.originalFileName}
-                    File size: TODO
-                    File type: ${info.fileType}
-                    File extension: ${info.fileExtension}
-                """.trimIndent()
-                )*/
-            },
+        if (detailsDialog) ImageDetailsDialog(
+            onDismissRequest = { viewModel.onEvent(PreviewEvent.HideDetailsDialog) },
+            mediaInfo = mediaInfo
+        )
+    }
+
+    @Composable
+    fun ErrorLoadingInfoDialog(throwable: Throwable? = null, onDismiss: () -> Unit) {
+        val missingInfo = stringResource(R.string.media_info_missing)
+
+        AlertDialog(
+            onDismissRequest = { onDismiss() },
+            title = { Text(stringResource(R.string.media_info_missing_title)) },
+            text = { Text(throwable?.localizedMessage?.ifEmpty { missingInfo } ?: missingInfo) },
             confirmButton = {
-                TextButton(
-                    onClick = {
-                        detailsDialog = false
-                    }
-                ) {
-                    Text(text = "Close")
+                TextButton(onClick = { onDismiss() }) {
+                    Text(stringResource(R.string.i_understand))
                 }
             }
         )
     }
 
+    @Composable
+    private fun ErrorLoadingImage(
+        throwable: Throwable,
+        modifier: Modifier = Modifier,
+    ) {
+        Box(
+            modifier = modifier
+                .background(Color.LightGray)
+                .padding(16.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Icon(
+                    painter = painterResource(R.drawable.baseline_error_outline_24),
+                    contentDescription = stringResource(R.string.error_loading_image),
+                    tint = Color.Red,
+                    modifier = Modifier.size(48.dp)
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = stringResource(
+                        R.string.failed_to_load_image,
+                        throwable.localizedMessage
+                    ),
+                    color = Color.Black,
+                    textAlign = TextAlign.Center
+                )
+            }
+        }
+    }
+
+    @Composable
+    private fun LoadingImage(modifier: Modifier = Modifier) {
+        Box(Modifier.fillMaxSize()) {
+            CircularProgressIndicator(modifier = modifier.align(Alignment.Center))
+        }
+    }
+
+    @Composable
+    fun ImageDetailsDialog(
+        onDismissRequest: () -> Unit,
+        mediaInfo: MediaInfo,
+    ) {
+        AlertDialog(
+            onDismissRequest = onDismissRequest,
+            title = { Text(text = stringResource(R.string.image_details)) },
+            text = {
+                val info = buildString {
+                    appendLine(stringResource(R.string.original_path, mediaInfo.filePath))
+                    appendLine(stringResource(R.string.original_file_name, mediaInfo.fileName))
+                    appendLine(stringResource(R.string.file_size, mediaInfo.fileSize))
+                    appendLine(stringResource(R.string.file_type, mediaInfo.fileType))
+                    appendLine(stringResource(R.string.file_extension, mediaInfo.fileExtension))
+                }
+                Text(text = info)
+            },
+            confirmButton = {
+                TextButton(onClick = onDismissRequest) {
+                    Text(text = stringResource(R.string.close))
+                }
+            }
+        )
+    }
+
+
     companion object {
-        // TODO: Change to ID.
-        fun startIntent(context: Context, fileName: String) {
+        private const val MEDIA_ID = "media_id"
+        fun startIntent(context: Context, mediaId: String) {
             context.startActivity(
                 Intent(context, PreviewActivity::class.java).apply {
-                    putExtra("fileName", fileName)
+                    putExtra(MEDIA_ID, mediaId)
                     addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                 }
             )

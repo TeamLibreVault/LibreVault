@@ -10,4 +10,18 @@
     <string name="encrypting">Encrypting...</string>
     <string name="unlock">Unlock</string>
     <string name="authenticate_to_continue">Authenticate to continue</string>
+    <string name="error_loading_image">Error loading image</string>
+    <string name="failed_to_load_image">Failed to load image: %1$s</string>
+    <string name="details">Details</string>
+    <string name="close">Close</string>
+    <string name="image_details">"Image Details: "</string>
+    <string name="original_path">Original path: %1$s</string>
+    <string name="original_file_name">Original file name: %1$s</string>
+    <string name="file_size_todo">File size: TODO</string>
+    <string name="file_extension">File extension: %1$s</string>
+    <string name="file_type">File type: %1$s</string>
+    <string name="i_understand">I Understand</string>
+    <string name="media_info_missing">The application was unable to retrieve the media information. This may have occurred unintentionally. You may still restore the media; however, it cannot be restored to its original location. After restoration, the media can be accessed using any file explorer. Restored files will be placed in the device\'s Downloads folder.</string>
+    <string name="media_info_missing_title">Unable to Load Media Information</string>
+    <string name="file_size">File size: %1$d</string>
 </resources>

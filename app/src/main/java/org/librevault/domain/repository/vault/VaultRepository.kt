@@ -11,11 +11,11 @@ interface VaultRepository {
 
     suspend fun deleteItemById(id: String): Throwable?
 
-    suspend fun getInfoById(id: String): Result<VaultItemInfo>
+    suspend fun getMediaInfoById(id: String): Result<VaultItemInfo>
 
-    fun getAllInfos(): Flow<List<VaultItemInfo>>
+    fun getAllMediaInfo(): Flow<List<VaultItemInfo>>
 
     fun getAllThumbnails(): Flow<List<VaultItemContent>>
 
-    suspend fun loadContentById(id: String): VaultItemContent
+    suspend fun getMediaContentById(id: String): Result<VaultItemContent>
 }

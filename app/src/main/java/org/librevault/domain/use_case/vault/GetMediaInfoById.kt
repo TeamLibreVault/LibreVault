@@ -1,19 +1,22 @@
 package org.librevault.domain.use_case.vault
 
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import org.librevault.domain.model.vault.VaultItemInfo
 import org.librevault.domain.repository.vault.VaultRepository
+import org.librevault.domain.use_case.utils.getUseCaseScope
 
-class GetInfoById(
+class GetMediaInfoById(
     private val vaultRepository: VaultRepository,
-    private val scope: CoroutineScope = CoroutineScope(Dispatchers.IO + SupervisorJob()),
 ) {
-    operator fun invoke(id: String, onFailure: (Throwable) -> Unit, onSuccess: (VaultItemInfo) -> Unit) {
+    private val scope = getUseCaseScope()
+
+    operator fun invoke(
+        id: String,
+        onFailure: (Throwable) -> Unit,
+        onSuccess: (VaultItemInfo) -> Unit,
+    ) {
         scope.launch {
-            vaultRepository.getInfoById(id)
+            vaultRepository.getMediaInfoById(id)
                 .onSuccess { onSuccess(it) }
                 .onFailure { onFailure(it) }
         }

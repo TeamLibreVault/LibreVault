@@ -6,12 +6,12 @@ import java.io.File
 typealias VaultFolders = Triple<File, File, File>
 
 fun resolveVaultFolders(id: String): VaultFolders = Triple(
-    first = VaultDirs.INFO.resolve(id),
-    second = VaultDirs.THUMBS.resolve(id),
-    third = VaultDirs.DATA.resolve(id)
+    first = VaultDirs.INFO.toPath().resolve(id).toFile(),
+    second = VaultDirs.THUMBS.toPath().resolve(id).toFile(),
+    third = VaultDirs.DATA.toPath().resolve(id).toFile()
 )
 
-fun resolveVaultThumb(id: String): File = VaultDirs.THUMBS.resolve(id)
-fun resolveVaultInfo(id: String): File = VaultDirs.INFO.resolve(id)
-fun resolveVaultData(id: String): File = VaultDirs.DATA.resolve(id)
+fun resolveVaultInfo(id: String): File = resolveVaultFolders(id).first
+fun resolveVaultThumb(id: String): File = resolveVaultFolders(id).second
+fun resolveVaultData(id: String): File = resolveVaultFolders(id).third
 

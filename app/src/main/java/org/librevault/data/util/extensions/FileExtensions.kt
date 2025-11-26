@@ -12,6 +12,7 @@ fun File.getVaultItemInfo(): VaultItemInfo {
     val filePath = file.absolutePath
     val fileParent = file.parent ?: "/"
     val fileName = file.nameWithoutExtension
+    val fileSize = file.length()
     val extension = file.extension
 
     return VaultItemInfo(
@@ -19,6 +20,7 @@ fun File.getVaultItemInfo(): VaultItemInfo {
         filePath = filePath,
         fileName = fileName,
         fileExtension = extension,
+        fileSize = fileSize,
         parentFolder = fileParent,
         dateAdded = System.currentTimeMillis(),
         fileType = fileType

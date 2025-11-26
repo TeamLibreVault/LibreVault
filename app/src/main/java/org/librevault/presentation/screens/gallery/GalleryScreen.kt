@@ -71,9 +71,8 @@ import org.librevault.common.state.SplashScreenConditionState
 import org.librevault.common.state.UiState
 import org.librevault.domain.model.gallery.FileType
 import org.librevault.domain.model.vault.aliases.resolveVaultFiles
-import org.librevault.presentation.activities.preview.PreviewActivity
-import org.librevault.presentation.aliases.gallery.ThumbnailInfo
-import org.librevault.presentation.aliases.gallery.ThumbnailsList
+import org.librevault.presentation.aliases.ThumbnailInfo
+import org.librevault.presentation.aliases.ThumbnailsList
 import org.librevault.presentation.events.GalleryEvent
 import org.librevault.presentation.screens.components.FailureDisplay
 import org.librevault.presentation.screens.components.LoadingIndicator
@@ -223,14 +222,15 @@ class GalleryScreen : Screen {
                                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                                     ) {
                                         items(items = state.data, key = { it.id }) { thumb ->
+                                            LaunchedEffect(key1 = Unit) {
+                                                viewModel.onEvent(GalleryEvent.DecryptInfo(thumb.id))
+                                            }
+
                                             val context = LocalContext.current
                                             val thumbnailInfo: ThumbnailInfo =
                                                 when (val info = infoState) {
                                                     is UiState.Error -> ThumbnailInfo.error()
-                                                    is UiState.Success<ThumbnailInfo> -> {
-                                                        info.data
-                                                    }
-
+                                                    is UiState.Success<ThumbnailInfo> -> info.data
                                                     else -> ThumbnailInfo.placeholder()
                                                 }
 
@@ -239,10 +239,11 @@ class GalleryScreen : Screen {
                                                 thumb = thumb.data,
                                                 info = thumbnailInfo,
                                             ) {
-                                                PreviewActivity.startIntent(
-                                                    context,
-                                                    thumbnailInfo.id
+                                                Log.d(
+                                                    TAG,
+                                                    "Content: Previewing media: ${thumb.id}"
                                                 )
+                                                viewModel.onEvent(GalleryEvent.PreviewMedia(thumb.id))
                                             }
                                         }
                                     }
@@ -316,6 +317,8 @@ class GalleryScreen : Screen {
         modifier: Modifier = Modifier,
         onClick: () -> Unit,
     ) {
+        Log.d(TAG, "PreviewCard: $info")
+
         Card(shape = MaterialTheme.shapes.medium) {
             val painter = rememberAsyncImagePainter(
                 model = ImageRequest.Builder(context)
@@ -388,9 +391,10 @@ class GalleryScreen : Screen {
 
         val randomMessage = remember { emptyMessages.random() }
 
-        Box(modifier = Modifier
-            .fillMaxSize()
-            .padding(8.dp)
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(8.dp)
         ) {
             Text(
                 modifier = Modifier.align(Alignment.Center),
