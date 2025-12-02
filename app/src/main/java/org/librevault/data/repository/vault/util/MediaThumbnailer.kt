@@ -2,8 +2,10 @@ package org.librevault.data.repository.vault.util
 
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.graphics.Matrix
 import android.media.MediaMetadataRetriever
 import android.util.Log
+import androidx.exifinterface.media.ExifInterface
 import java.io.ByteArrayOutputStream
 import java.io.File
 
@@ -28,7 +30,7 @@ class MediaThumbnailer(
             if (bitmap == null)
                 return null
 
-            val resized = bitmap.cropSquare()
+            val resized = bitmap.cropSquare(file.absolutePath)
 
             @Suppress("SpellCheckingInspection")
             val baos = ByteArrayOutputStream()
@@ -67,17 +69,40 @@ class MediaThumbnailer(
                 lower.endsWith(".3gp") || lower.endsWith(".mov")
     }
 
-    private fun Bitmap.cropSquare(): Bitmap {
-        val bitmap = this
+    fun Bitmap.cropSquare(filePath: String): Bitmap {
+        // Read EXIF orientation
+        val exif = ExifInterface(filePath)
+        val orientation = exif.getAttributeInt(
+            ExifInterface.TAG_ORIENTATION,
+            ExifInterface.ORIENTATION_NORMAL
+        )
 
-        val width = bitmap.width
-        val height = bitmap.height
+        // Apply rotation only if necessary
+        val matrix = Matrix()
+        if (orientation != ExifInterface.ORIENTATION_NORMAL) {
+            val angle = when (orientation) {
+                ExifInterface.ORIENTATION_ROTATE_90 -> 90f
+                ExifInterface.ORIENTATION_ROTATE_180 -> 180f
+                ExifInterface.ORIENTATION_ROTATE_270 -> 270f
+                else -> 0f
+            }
+            if (angle != 0f) matrix.postRotate(angle)
+        }
 
-        val size = minOf(width, height)
+        // If no rotation needed, skip creating an intermediate bitmap
+        val fixed = if (!matrix.isIdentity) {
+            Bitmap.createBitmap(this, 0, 0, width, height, matrix, true)
+        } else {
+            this
+        }
 
-        val x = (width - size) / 2
-        val y = (height - size) / 2
+        // Crop centered square
+        val w = fixed.width
+        val h = fixed.height
+        val size = minOf(w, h)
+        val x = (w - size) / 2
+        val y = (h - size) / 2
 
-        return Bitmap.createBitmap(bitmap, x, y, size, size)
+        return Bitmap.createBitmap(fixed, x, y, size, size)
     }
 }
