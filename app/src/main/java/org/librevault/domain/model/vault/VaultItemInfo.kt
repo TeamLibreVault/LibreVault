@@ -55,3 +55,5 @@ data class VaultItemInfo(
         )
     }
 }
+
+fun String.fromJsonToVaultItemInfo(): VaultItemInfo = Gson().fromJson(this, VaultItemInfo::class.java)

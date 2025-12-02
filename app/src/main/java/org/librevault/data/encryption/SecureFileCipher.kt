@@ -75,41 +75,42 @@ object SecureFileCipher {
 
         val totalBytes = inputBytes.size.toFloat().coerceAtLeast(1f)
         var processedBytes = 0L
-        var lastReportedProgress = 0f
+        var lastReported = -1f   // ensures first update always fires
 
         ByteArrayInputStream(inputBytes).use { bais ->
             BufferedInputStream(bais, BUFFER_SIZE).use { bufferedIn ->
                 FileOutputStream(outputFile).use { fos ->
-                    BufferedOutputStream(fos, BUFFER_SIZE).use { bufferedOut ->
-                        // write salt + iv
-                        bufferedOut.write(salt)
-                        bufferedOut.write(iv)
+                    BufferedOutputStream(fos, BUFFER_SIZE).use { out ->
+                        out.write(salt)
+                        out.write(iv)
 
                         val buffer = ByteArray(BUFFER_SIZE)
-                        var bytesRead: Int
-                        while (bufferedIn.read(buffer).also { bytesRead = it } != -1) {
-                            val encrypted = cipher.update(buffer, 0, bytesRead)
-                            if (encrypted != null) {
-                                bufferedOut.write(encrypted)
-                            }
-                            processedBytes += bytesRead
-                            val progress = processedBytes.toFloat() / totalBytes
+                        var read: Int
 
-                            // report once every 1% change to avoid flooding
-                            if (progress - lastReportedProgress >= 0.01f || progress == 1f) {
-                                lastReportedProgress = progress
-                                onProgress(progress)
+                        while (bufferedIn.read(buffer).also { read = it } != -1) {
+                            val encrypted = cipher.update(buffer, 0, read)
+                            if (encrypted != null) out.write(encrypted)
+
+                            processedBytes += read
+                            val progress = (processedBytes / totalBytes).coerceIn(0f, 1f)
+
+                            val rounded = (progress * 100).toInt() / 100f
+                            if (rounded != lastReported) {
+                                lastReported = rounded
+                                onProgress(rounded)
                             }
                         }
 
-                        // finalize encryption
                         val finalBytes = cipher.doFinal()
-                        if (finalBytes != null) bufferedOut.write(finalBytes)
-                        bufferedOut.flush()
+                        if (finalBytes != null) out.write(finalBytes)
+                        out.flush()
                     }
                 }
             }
         }
+
+        // make absolutely sure progress hits 1.0
+        if (lastReported < 1f) onProgress(1f)
 
         onComplete()
     }
@@ -121,54 +122,55 @@ object SecureFileCipher {
         onProgress: (Float) -> Unit = {},
         onComplete: () -> Unit = {},
         onError: (Throwable) -> Unit = {}
-    ) = runCatching {
-        val salt = ByteArray(SALT_SIZE).also { SecureRandom().nextBytes(it) }
-        val derivedKey = deriveKeyFromPassword(key, salt)
+    ) {
+        runCatching {
+            val salt = ByteArray(SALT_SIZE).also { SecureRandom().nextBytes(it) }
+            val derivedKey = deriveKeyFromPassword(key, salt)
 
-        val iv = ByteArray(IV_SIZE).also { SecureRandom().nextBytes(it) }
-        val cipher = Cipher.getInstance(AES_MODE)
-        cipher.init(Cipher.ENCRYPT_MODE, derivedKey, GCMParameterSpec(GCM_TAG_LENGTH, iv))
+            val iv = ByteArray(IV_SIZE).also { SecureRandom().nextBytes(it) }
+            val cipher = Cipher.getInstance(AES_MODE)
+            cipher.init(Cipher.ENCRYPT_MODE, derivedKey, GCMParameterSpec(GCM_TAG_LENGTH, iv))
 
-        val totalBytes = inputFile.length().toFloat().coerceAtLeast(1f)
-        var processedBytes = 0L
-        var lastReportedProgress = 0f
+            val totalBytes = inputFile.length().toFloat().coerceAtLeast(1f)
+            var processedBytes = 0L
+            var lastReported = -1f
 
-        FileInputStream(inputFile).use { fis ->
-            BufferedInputStream(fis, BUFFER_SIZE).use { bufferedIn ->
-                FileOutputStream(outputFile).use { fos ->
-                    BufferedOutputStream(fos, BUFFER_SIZE).use { bufferedOut ->
-                        // write salt + iv
-                        bufferedOut.write(salt)
-                        bufferedOut.write(iv)
+            FileInputStream(inputFile).use { fis ->
+                BufferedInputStream(fis, BUFFER_SIZE).use { bufferedIn ->
+                    FileOutputStream(outputFile).use { fos ->
+                        BufferedOutputStream(fos, BUFFER_SIZE).use { out ->
+                            out.write(salt)
+                            out.write(iv)
 
-                        val buffer = ByteArray(BUFFER_SIZE)
-                        var bytesRead: Int
-                        while (bufferedIn.read(buffer).also { bytesRead = it } != -1) {
-                            val encrypted = cipher.update(buffer, 0, bytesRead)
-                            if (encrypted != null) {
-                                bufferedOut.write(encrypted)
+                            val buffer = ByteArray(BUFFER_SIZE)
+                            var read: Int
+
+                            while (bufferedIn.read(buffer).also { read = it } != -1) {
+                                val encrypted = cipher.update(buffer, 0, read)
+                                if (encrypted != null) out.write(encrypted)
+
+                                processedBytes += read
+                                val fraction = (processedBytes / totalBytes).coerceIn(0f, 1f)
+
+                                val rounded = (fraction * 100).toInt() / 100f
+                                if (rounded != lastReported) {
+                                    lastReported = rounded
+                                    onProgress(rounded)
+                                }
                             }
-                            processedBytes += bytesRead.toLong()
-                            val progress = processedBytes.toFloat() / totalBytes
 
-                            // report once every 1% change to avoid flooding
-                            if (progress - lastReportedProgress >= 0.01f || progress == 1f) {
-                                lastReportedProgress = progress
-                                onProgress(progress)
-                            }
+                            val finalBytes = cipher.doFinal()
+                            if (finalBytes != null) out.write(finalBytes)
+                            out.flush()
                         }
-
-                        // finalize
-                        val finalBytes = cipher.doFinal()
-                        if (finalBytes != null) bufferedOut.write(finalBytes)
-                        bufferedOut.flush()
                     }
                 }
             }
-        }
 
-        onComplete()
-    }.onFailure { onError(it) }
+            if (lastReported < 1f) onProgress(1f)
+            onComplete()
+        }.onFailure { onError(it) }
+    }
 
     /**
      * Decrypts file written by encryptFile(); expects [salt][iv][ciphertext]
@@ -232,50 +234,57 @@ object SecureFileCipher {
         key: ByteArray,
         onProgress: (Float) -> Unit = {}
     ): ByteArray {
+        // ciphertext portion excludes salt + iv
         val totalCiphertextBytes =
             (inputFile.length() - SALT_SIZE - IV_SIZE).toFloat().coerceAtLeast(1f)
+
         var processedBytes = 0L
-        var lastReportedProgress = 0f
+        var lastReported = -1f
 
         FileInputStream(inputFile).use { fis ->
             BufferedInputStream(fis, BUFFER_SIZE).use { bufferedIn ->
-                // read salt and IV
+                // read salt
                 val salt = ByteArray(SALT_SIZE)
                 if (bufferedIn.read(salt) != SALT_SIZE)
-                    throw IllegalStateException("Unable to read salt")
+                    throw IllegalStateException("Salt missing or truncated")
 
+                // read iv
                 val iv = ByteArray(IV_SIZE)
                 if (bufferedIn.read(iv) != IV_SIZE)
-                    throw IllegalStateException("Unable to read IV")
+                    throw IllegalStateException("IV missing or truncated")
 
-                val derivedKey = deriveKeyFromPassword(passwordBytes = key, salt = salt)
+                val derivedKey = deriveKeyFromPassword(key, salt)
                 val cipher = Cipher.getInstance(AES_MODE)
                 cipher.init(Cipher.DECRYPT_MODE, derivedKey, GCMParameterSpec(GCM_TAG_LENGTH, iv))
 
-                // use a single expandable buffer instead of chunk list
                 val outputStream = ByteArrayOutputStream(BUFFER_SIZE)
 
                 val buffer = ByteArray(BUFFER_SIZE)
-                var bytesRead: Int
-                while (bufferedIn.read(buffer).also { bytesRead = it } != -1) {
-                    val decrypted = cipher.update(buffer, 0, bytesRead)
+                var read: Int
+
+                while (bufferedIn.read(buffer).also { read = it } != -1) {
+                    val decrypted = cipher.update(buffer, 0, read)
                     if (decrypted != null) outputStream.write(decrypted)
 
-                    processedBytes += bytesRead
-                    val progress = processedBytes.toFloat() / totalCiphertextBytes
-                    if (progress - lastReportedProgress >= 0.02f || progress == 1f) {
-                        lastReportedProgress = progress
-                        onProgress(progress)
+                    processedBytes += read
+                    val fraction = (processedBytes / totalCiphertextBytes).coerceIn(0f, 1f)
+
+                    val rounded = (fraction * 100).toInt() / 100f
+                    if (rounded != lastReported) {
+                        lastReported = rounded
+                        onProgress(rounded)
                     }
                 }
 
-                // finalize
                 val finalBytes = cipher.doFinal()
                 if (finalBytes != null) outputStream.write(finalBytes)
 
-                val output = outputStream.toByteArray()
+                val result = outputStream.toByteArray()
 
-                return output
+                // make 100 percent absolute
+                if (lastReported < 1f) onProgress(1f)
+
+                return result
             }
         }
     }

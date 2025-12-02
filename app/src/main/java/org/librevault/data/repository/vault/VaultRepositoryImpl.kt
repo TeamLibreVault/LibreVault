@@ -6,7 +6,6 @@ import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.suspendCancellableCoroutine
 import org.librevault.data.encryption.SecureFileCipher
 import org.librevault.data.repository.vault.util.MediaThumbnailer
-import org.librevault.data.util.extensions.fromJsonToVaultItemInfo
 import org.librevault.data.util.extensions.getVaultItemInfo
 import org.librevault.data.util.extensions.toVaultItemContent
 import org.librevault.data.util.vault.getBaseKey
@@ -17,6 +16,7 @@ import org.librevault.domain.model.vault.aliases.resolveVaultFiles
 import org.librevault.domain.model.vault.aliases.resolveVaultFolders
 import org.librevault.domain.model.vault.aliases.resolveVaultInfo
 import org.librevault.domain.model.vault.aliases.resolveVaultThumb
+import org.librevault.domain.model.vault.fromJsonToVaultItemInfo
 import org.librevault.domain.repository.vault.VaultRepository
 import java.io.File
 import kotlin.coroutines.resumeWithException
