@@ -71,6 +71,7 @@ import org.librevault.common.state.SplashScreenConditionState
 import org.librevault.common.state.UiState
 import org.librevault.domain.model.gallery.FileType
 import org.librevault.domain.model.vault.aliases.resolveVaultFiles
+import org.librevault.presentation.aliases.EncryptedInfo
 import org.librevault.presentation.aliases.ThumbnailInfo
 import org.librevault.presentation.aliases.ThumbnailsList
 import org.librevault.presentation.events.GalleryEvent
@@ -96,14 +97,15 @@ class GalleryScreen : Screen {
         val encryptState by viewModel.encryptState.collectAsState()
 
         LaunchedEffect(key1 = Unit) {
-            viewModel.onEvent(GalleryEvent.LoadThumbnails)
+            viewModel.onEvent(GalleryEvent.LoadThumbnails())
         }
 
         LaunchedEffect(key1 = encryptState) {
             if (encryptState is UiState.Success) {
                 Log.d(TAG, "LaunchedEffect: Refreshing gallery")
                 Log.d(TAG, "LaunchedEffect: Thumbnails " + resolveVaultFiles().second)
-                viewModel.onEvent(GalleryEvent.LoadThumbnails)
+                val newFiles = (encryptState as UiState.Success<List<EncryptedInfo>>).data.map { it.id }
+                viewModel.onEvent(GalleryEvent.LoadThumbnails(newFiles))
             }
         }
 

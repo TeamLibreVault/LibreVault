@@ -103,10 +103,13 @@ class VaultRepositoryImpl(
         emit(vaultInfos)
     }
 
-    override fun getAllThumbnails(): Flow<List<VaultItemContent>> = flow {
+    override fun getAllThumbnails(): Flow<List<VaultItemContent>> = getAllThumbnailsById(emptyList())
+
+    override fun getAllThumbnailsById(ids: List<String>): Flow<List<VaultItemContent>> = flow {
         val vaultThumbs = mutableListOf<VaultItemContent>()
 
-        val vaultThumbFiles = resolveVaultFiles().second
+        val vaultThumbFiles =
+            if (ids.isNotEmpty()) resolveVaultFiles().second.filter { it.name in ids } else resolveVaultFiles().second
         Log.d(TAG, "getAllThumbnails: Thumbnails: ${vaultThumbFiles.size}")
         val baseKey = getBaseKey()
 

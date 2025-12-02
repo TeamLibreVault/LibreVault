@@ -20,7 +20,7 @@ private const val TAG = "GalleryViewModel"
 
 class GalleryViewModel(
     private val context: Context,
-    private val galleryUseCases: GalleryUseCases
+    private val galleryUseCases: GalleryUseCases,
 ) : AndroidViewModel(context as Application) {
     private val _thumbnailsState = MutableStateFlow<ThumbnailsListState>(UiState.Idle)
     val thumbnailsState: StateFlow<ThumbnailsListState> = _thumbnailsState
@@ -48,7 +48,7 @@ class GalleryViewModel(
             is GalleryEvent.DecryptInfo -> decryptInfo(galleryEvent.id)
             is GalleryEvent.PreviewMedia -> previewMedia(galleryEvent.id)
 
-            GalleryEvent.LoadThumbnails -> loadThumbnails()
+            is GalleryEvent.LoadThumbnails -> loadThumbnails(galleryEvent.items)
             GalleryEvent.RefreshGallery -> refreshGallery()
         }
     }
@@ -109,15 +109,41 @@ class GalleryViewModel(
         )
     }
 
-    private fun loadThumbnails() {
+    private fun loadThumbnails(items: List<String>) {
+        val currentThumbnails = when (val currentState = _thumbnailsState.value) {
+            is UiState.Success -> currentState.data
+            else -> emptyList()
+        }
+
         _thumbnailsState.value = UiState.Loading
-        galleryUseCases.getAllThumbnails(
-            onThumbsDecrypted = { value -> _thumbnailsState.value = UiState.Success(value) },
-            onError = {
-                Log.e(TAG, "loadThumbnails: Error loading thumbnails", it)
-                _thumbnailsState.value = UiState.Error(it)
-            }
-        )
+        Log.d(TAG, "loadThumbnails: Loading thumbnails")
+
+        if (items.isNotEmpty()) {
+            galleryUseCases.getAllThumbnailsById(
+                ids = items,
+                onThumbsDecrypted = { newThumbnails ->
+                    // Append new thumbnails
+                    val updatedThumbnails = currentThumbnails + newThumbnails
+                    _thumbnailsState.value = UiState.Success(updatedThumbnails)
+                    Log.d(TAG, "loadThumbnails: Thumbs decrypted: ${newThumbnails.joinToString { it.id }}")
+                },
+                onError = {
+                    _thumbnailsState.value = UiState.Error(it)
+                    Log.e(TAG, "loadThumbnails: Error loading thumbnails", it)
+                }
+            )
+        } else {
+            galleryUseCases.getAllThumbnails(
+                onThumbsDecrypted = { value ->
+                    Log.d(TAG, "loadThumbnails: Thumbs decrypted: ${value.size}")
+                    _thumbnailsState.value = UiState.Success(value)
+                },
+                onError = {
+                    Log.e(TAG, "loadThumbnails: Error loading thumbnails", it)
+                    _thumbnailsState.value = UiState.Error(it)
+                }
+            )
+        }
     }
 
     private fun refreshGallery() {

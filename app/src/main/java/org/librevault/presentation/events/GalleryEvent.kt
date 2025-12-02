@@ -3,7 +3,7 @@ package org.librevault.presentation.events
 import java.io.File
 
 sealed class GalleryEvent {
-    object LoadThumbnails : GalleryEvent()
+    data class LoadThumbnails(val items: List<String> = emptyList()) : GalleryEvent()
     object SelectFiles : GalleryEvent()
     object UnselectFiles : GalleryEvent()
     data class EncryptFiles(val files: List<File>) : GalleryEvent()

@@ -17,5 +17,7 @@ interface VaultRepository {
 
     fun getAllThumbnails(): Flow<List<VaultItemContent>>
 
+    fun getAllThumbnailsById(ids: List<String>): Flow<List<VaultItemContent>>
+
     suspend fun getMediaContentById(id: String): Result<VaultItemContent>
 }
