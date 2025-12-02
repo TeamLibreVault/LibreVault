@@ -1,11 +1,9 @@
 package org.librevault.domain.model.vault
 
-import org.librevault.common.vault_consts.VaultInfoKeys
+import com.google.gson.Gson
 import org.librevault.domain.model.gallery.FileType
-import org.librevault.utils.buildProperties
 import org.librevault.utils.emptyString
-import org.librevault.utils.toProperties
-import java.util.Properties
+import java.util.Locale
 
 data class VaultItemInfo(
     val id: String,
@@ -17,36 +15,19 @@ data class VaultItemInfo(
     val dateAdded: Long,
     val fileType: FileType,
 ) {
-    override fun toString(): String = buildProperties("Info") {
-        setProperty(
-            VaultInfoKeys.FILE_TYPE,
-            fileType()
-        )
-        setProperty(
-            VaultInfoKeys.ORIGINAL_PATH,
-            filePath
-        )
-        setProperty(
-            VaultInfoKeys.FILE_SIZE,
-            fileSize.toString()
-        )
-        setProperty(VaultInfoKeys.PARENT_FOLDER, parentFolder)
-        setProperty(
-            VaultInfoKeys.ORIGINAL_FILE_NAME,
-            fileName
-        )
-        setProperty(
-            VaultInfoKeys.DATE_ADDED,
-            dateAdded.toString()
-        )
-        setProperty(VaultInfoKeys.VAULT_FILE_NAME, id)
-        setProperty(
-            VaultInfoKeys.FILE_EXTENSION,
-            fileExtension
-        )
-    }
+    override fun toString(): String = Gson().toJson(this)
 
-    fun toProperties(): Properties = toString().toProperties()
+    val formattedFileSize: String
+        get() {
+            val size = fileSize.toDouble()
+            val locale = Locale.getDefault()
+            return when {
+                size < 1024 -> String.format(locale, "%.2f B", size)
+                size < 1024 * 1024 -> String.format(locale, "%.2f KB", size / 1024)
+                size < 1024 * 1024 * 1024 -> String.format(locale, "%.2f MB", size / (1024 * 1024))
+                else -> String.format(locale, "%.2f GB", size / (1024 * 1024 * 1024))
+            }
+        }
 
     companion object {
         private const val NOT_FOUND = "Not found!"

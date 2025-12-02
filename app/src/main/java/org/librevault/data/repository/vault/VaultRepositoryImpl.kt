@@ -6,9 +6,9 @@ import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.suspendCancellableCoroutine
 import org.librevault.data.encryption.SecureFileCipher
 import org.librevault.data.repository.vault.util.MediaThumbnailer
+import org.librevault.data.util.extensions.fromJsonToVaultItemInfo
 import org.librevault.data.util.extensions.getVaultItemInfo
 import org.librevault.data.util.extensions.toVaultItemContent
-import org.librevault.data.util.extensions.toVaultItemInfo
 import org.librevault.data.util.vault.getBaseKey
 import org.librevault.domain.model.vault.VaultItemContent
 import org.librevault.domain.model.vault.VaultItemInfo
@@ -18,7 +18,6 @@ import org.librevault.domain.model.vault.aliases.resolveVaultFolders
 import org.librevault.domain.model.vault.aliases.resolveVaultInfo
 import org.librevault.domain.model.vault.aliases.resolveVaultThumb
 import org.librevault.domain.repository.vault.VaultRepository
-import org.librevault.utils.toProperties
 import java.io.File
 import kotlin.coroutines.resumeWithException
 
@@ -81,7 +80,7 @@ class VaultRepositoryImpl(
         val info = SecureFileCipher.decryptToBytes(
             inputFile = resolveVaultInfo(id),
             key = baseKey
-        ).decodeToString().toProperties().toVaultItemInfo()
+        ).decodeToString().fromJsonToVaultItemInfo()
         baseKey.fill(0)
         info
     }
@@ -98,7 +97,7 @@ class VaultRepositoryImpl(
             vaultInfos += SecureFileCipher.decryptToBytes(
                 inputFile = resolveVaultInfo(id),
                 key = baseKey
-            ).decodeToString().toProperties().toVaultItemInfo()
+            ).decodeToString().fromJsonToVaultItemInfo()
         }
         baseKey.fill(0)
         emit(vaultInfos)

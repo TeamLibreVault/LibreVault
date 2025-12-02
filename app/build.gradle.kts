@@ -70,6 +70,7 @@ dependencies {
     implementation(project.dependencies.platform("io.insert-koin:koin-bom:4.1.1"))
     implementation(libs.koin.android)
     implementation(libs.koin.androidx.compose)
+    implementation(libs.gson)
     implementation(libs.androidx.lifecycle.process)
     implementation(libs.androidx.datastore.preferences)
     testImplementation(libs.junit)

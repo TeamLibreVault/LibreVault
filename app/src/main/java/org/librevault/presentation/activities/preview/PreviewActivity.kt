@@ -288,7 +288,7 @@ class PreviewActivity : ComponentActivity() {
                 val info = buildString {
                     appendLine(stringResource(R.string.original_path, mediaInfo.filePath))
                     appendLine(stringResource(R.string.original_file_name, mediaInfo.fileName))
-                    appendLine(stringResource(R.string.file_size, mediaInfo.fileSize))
+                    appendLine(stringResource(R.string.file_size, mediaInfo.formattedFileSize))
                     appendLine(stringResource(R.string.file_type, mediaInfo.fileType))
                     appendLine(stringResource(R.string.file_extension, mediaInfo.fileExtension))
                 }

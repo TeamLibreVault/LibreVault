@@ -23,5 +23,5 @@
     <string name="i_understand">I Understand</string>
     <string name="media_info_missing">The application was unable to retrieve the media information. This may have occurred unintentionally. You may still restore the media; however, it cannot be restored to its original location. After restoration, the media can be accessed using any file explorer. Restored files will be placed in the device\'s Downloads folder.</string>
     <string name="media_info_missing_title">Unable to Load Media Information</string>
-    <string name="file_size">File size: %1$d</string>
+    <string name="file_size">File size: %1$s</string>
 </resources>
