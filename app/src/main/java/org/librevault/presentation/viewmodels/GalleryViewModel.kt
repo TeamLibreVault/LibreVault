@@ -35,31 +35,20 @@ class GalleryViewModel(
     val infoState: StateFlow<InfoState> = _infoState
 
     init {
-        initDirs()
+        VaultDirs.initVaultDirs()
     }
 
-    fun onEvent(galleryEvent: GalleryEvent) {
-        when (galleryEvent) {
-            GalleryEvent.ClearGallery -> clearGallery()
-            GalleryEvent.SelectFiles -> selectFiles()
-            GalleryEvent.UnselectFiles -> unselectFiles()
+    fun onEvent(galleryEvent: GalleryEvent) = when (galleryEvent) {
+        GalleryEvent.ClearGallery -> clearGallery()
+        GalleryEvent.SelectFiles -> selectFiles()
+        GalleryEvent.UnselectFiles -> unselectFiles()
 
-            is GalleryEvent.EncryptFiles -> encryptFiles(galleryEvent.files)
-            is GalleryEvent.DecryptInfo -> decryptInfo(galleryEvent.id)
-            is GalleryEvent.PreviewMedia -> previewMedia(galleryEvent.id)
+        is GalleryEvent.EncryptFiles -> encryptFiles(galleryEvent.files)
+        is GalleryEvent.DecryptInfo -> decryptInfo(galleryEvent.id)
+        is GalleryEvent.PreviewMedia -> previewMedia(galleryEvent.id)
 
-            is GalleryEvent.LoadThumbnails -> loadThumbnails(galleryEvent.items)
-            GalleryEvent.RefreshGallery -> refreshGallery()
-        }
-    }
-
-    private fun initDirs() {
-        VaultDirs.apply {
-            if (ROOT.exists().not()) ROOT.mkdirs()
-            if (THUMBS.exists().not()) THUMBS.mkdirs()
-            if (DATA.exists().not()) DATA.mkdirs()
-            if (INFO.exists().not()) INFO.mkdirs()
-        }
+        is GalleryEvent.LoadThumbnails -> loadThumbnails(galleryEvent.items)
+        GalleryEvent.RefreshGallery -> refreshGallery()
     }
 
     private fun clearGallery() {

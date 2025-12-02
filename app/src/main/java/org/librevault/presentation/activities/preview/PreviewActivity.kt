@@ -23,6 +23,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -245,7 +246,7 @@ class PreviewActivity : ComponentActivity() {
     ) {
         Box(
             modifier = modifier
-                .background(Color.LightGray)
+                .background(MaterialTheme.colorScheme.background)
                 .padding(16.dp),
             contentAlignment = Alignment.Center
         ) {
@@ -271,7 +272,11 @@ class PreviewActivity : ComponentActivity() {
 
     @Composable
     private fun LoadingImage(modifier: Modifier = Modifier) {
-        Box(Modifier.fillMaxSize()) {
+        Box(
+            modifier = Modifier
+                .background(MaterialTheme.colorScheme.background)
+                .fillMaxSize()
+        ) {
             CircularProgressIndicator(modifier = modifier.align(Alignment.Center))
         }
     }
