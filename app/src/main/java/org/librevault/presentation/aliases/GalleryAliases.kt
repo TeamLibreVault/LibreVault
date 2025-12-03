@@ -8,7 +8,8 @@ typealias ThumbnailsListState = UiState<List<VaultItemContent>>
 typealias ThumbnailsList = List<VaultItemContent>
 typealias ThumbnailInfo = VaultItemInfo
 
-typealias InfoState = UiState<ThumbnailInfo>
+typealias ThumbnailInfoListState = UiState<List<ThumbnailInfo>>
+typealias ThumbnailInfoList = List<ThumbnailInfo>
 
 typealias EncryptedInfo = VaultItemInfo
 typealias EncryptListState = UiState<List<EncryptedInfo>>

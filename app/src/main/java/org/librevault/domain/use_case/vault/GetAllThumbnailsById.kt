@@ -21,7 +21,7 @@ class GetAllThumbnailsById(
         onError: (Throwable) -> Unit,
         onCompletion: () -> Unit = {},
     ) {
-        vaultRepository.getAllThumbnailsById(ids)
+        vaultRepository.getThumbnailsByIds(ids)
             .onEach { value ->
                 withContext(Dispatchers.Main) { onThumbsDecrypted(value) }
             }

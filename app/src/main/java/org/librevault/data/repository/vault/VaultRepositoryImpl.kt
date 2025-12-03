@@ -75,20 +75,12 @@ class VaultRepositoryImpl(
         resolveVaultData(id).delete()
     }.exceptionOrNull()
 
-    override suspend fun getMediaInfoById(id: String): Result<VaultItemInfo> = runCatching {
-        val baseKey = getBaseKey()
-        val info = SecureFileCipher.decryptToBytes(
-            inputFile = resolveVaultInfo(id),
-            key = baseKey
-        ).decodeToString().fromJsonToVaultItemInfo()
-        baseKey.fill(0)
-        info
-    }
+    override fun getAllMediaInfo(): Flow<List<VaultItemInfo>> =  getMediaInfoByIds(emptyList())
 
-    override fun getAllMediaInfo(): Flow<List<VaultItemInfo>> = flow {
+    override fun getMediaInfoByIds(ids: List<String>): Flow<List<VaultItemInfo>> = flow {
         val vaultInfos = mutableListOf<VaultItemInfo>()
-
-        val vaultInfoFiles = resolveVaultFiles().second
+        val infoFiles = resolveVaultFiles().second
+        val vaultInfoFiles = if (ids.isNotEmpty()) infoFiles.filter { it.name in ids } else infoFiles
         val baseKey = getBaseKey()
 
         vaultInfoFiles.forEach { thumbFile ->
@@ -103,9 +95,19 @@ class VaultRepositoryImpl(
         emit(vaultInfos)
     }
 
-    override fun getAllThumbnails(): Flow<List<VaultItemContent>> = getAllThumbnailsById(emptyList())
+    override suspend fun getMediaInfoById(id: String): Result<VaultItemInfo> = runCatching {
+        val baseKey = getBaseKey()
+        val info = SecureFileCipher.decryptToBytes(
+            inputFile = resolveVaultInfo(id),
+            key = baseKey
+        ).decodeToString().fromJsonToVaultItemInfo()
+        baseKey.fill(0)
+        info
+    }
 
-    override fun getAllThumbnailsById(ids: List<String>): Flow<List<VaultItemContent>> = flow {
+    override fun getAllThumbnails(): Flow<List<VaultItemContent>> = getThumbnailsByIds(emptyList())
+
+    override fun getThumbnailsByIds(ids: List<String>): Flow<List<VaultItemContent>> = flow {
         val vaultThumbs = mutableListOf<VaultItemContent>()
 
         val vaultThumbFiles =

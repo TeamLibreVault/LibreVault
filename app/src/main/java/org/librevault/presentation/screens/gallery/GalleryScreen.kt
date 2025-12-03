@@ -91,21 +91,25 @@ class GalleryScreen : Screen {
         val coroutine = rememberCoroutineScope()
         val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
 
-        val infoState by viewModel.infoState.collectAsState()
+        val thumbnailInfoListState by viewModel.thumbnailInfoListState.collectAsState()
         val thumbnailsState by viewModel.thumbnailsState.collectAsState()
         val selectFiles by viewModel.selectFiles.collectAsState()
         val encryptState by viewModel.encryptState.collectAsState()
 
         LaunchedEffect(key1 = Unit) {
             viewModel.onEvent(GalleryEvent.LoadThumbnails())
+            viewModel.onEvent(GalleryEvent.LoadMediaInfos())
         }
 
         LaunchedEffect(key1 = encryptState) {
             if (encryptState is UiState.Success) {
                 Log.d(TAG, "LaunchedEffect: Refreshing gallery")
                 Log.d(TAG, "LaunchedEffect: Thumbnails " + resolveVaultFiles().second)
-                val newFiles = (encryptState as UiState.Success<List<EncryptedInfo>>).data.map { it.id }
+                val newFiles =
+                    (encryptState as UiState.Success<List<EncryptedInfo>>).data.map { it.id }
                 viewModel.onEvent(GalleryEvent.LoadThumbnails(newFiles))
+                viewModel.onEvent(GalleryEvent.LoadMediaInfos(newFiles))
+
             }
         }
 
@@ -224,15 +228,13 @@ class GalleryScreen : Screen {
                                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                                     ) {
                                         items(items = state.data, key = { it.id }) { thumb ->
-                                            LaunchedEffect(key1 = Unit) {
-                                                viewModel.onEvent(GalleryEvent.DecryptInfo(thumb.id))
-                                            }
-
                                             val context = LocalContext.current
                                             val thumbnailInfo: ThumbnailInfo =
-                                                when (val info = infoState) {
+                                                when (val info = thumbnailInfoListState) {
                                                     is UiState.Error -> ThumbnailInfo.error()
-                                                    is UiState.Success<ThumbnailInfo> -> info.data
+                                                    is UiState.Success -> info.data.firstOrNull { it.id == thumb.id }
+                                                        ?: ThumbnailInfo.error()
+
                                                     else -> ThumbnailInfo.placeholder()
                                                 }
 

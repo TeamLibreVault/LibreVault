@@ -6,24 +6,24 @@ import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onCompletion
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.withContext
-import org.librevault.domain.model.vault.VaultItemContent
+import org.librevault.domain.model.vault.VaultItemInfo
 import org.librevault.domain.repository.vault.VaultRepository
 import org.librevault.domain.use_case.utils.getUseCaseScope
 
-class GetAllThumbnails(
+class GetMediaInfoByIds(
     private val vaultRepository: VaultRepository,
 ) {
-
-    private val coroutineScope = getUseCaseScope()
+    private val scope = getUseCaseScope()
 
     operator fun invoke(
-        onThumbsDecrypted: (List<VaultItemContent>) -> Unit = {},
+        ids: List<String>,
+        onSuccess: (List<VaultItemInfo>) -> Unit,
         onError: (Throwable) -> Unit,
         onCompletion: () -> Unit = {},
     ) {
-        vaultRepository.getAllThumbnails()
+        vaultRepository.getMediaInfoByIds(ids)
             .onEach { value ->
-                withContext(Dispatchers.Main) { onThumbsDecrypted(value) }
+                withContext(Dispatchers.Main) { onSuccess(value) }
             }
             .catch { cause ->
                 withContext(Dispatchers.Main) { onError(cause) }
@@ -31,7 +31,6 @@ class GetAllThumbnails(
             .onCompletion {
                 withContext(Dispatchers.Main) { onCompletion() }
             }
-            .launchIn(coroutineScope)
+            .launchIn(scope)
     }
-
 }
