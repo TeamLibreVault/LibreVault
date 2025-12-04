@@ -1,13 +1,13 @@
 package org.librevault.presentation.viewmodels
 
 import android.app.Application
-import android.content.Context
 import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import org.librevault.common.state.UiState
 import org.librevault.common.vault_consts.VaultDirs
+import org.librevault.domain.model.vault.FolderName
 import org.librevault.domain.use_case_bundle.GalleryUseCases
 import org.librevault.presentation.activities.preview.PreviewActivity
 import org.librevault.presentation.aliases.EncryptListState
@@ -19,9 +19,12 @@ import java.io.File
 private const val TAG = "GalleryViewModel"
 
 class GalleryViewModel(
-    private val context: Context,
+    private val application: Application,
     private val galleryUseCases: GalleryUseCases,
-) : AndroidViewModel(context as Application) {
+) : AndroidViewModel(application) {
+    private val _folderNameState = MutableStateFlow(FolderName.IMAGES)
+    val folderNameState: StateFlow<FolderName> = _folderNameState
+
     private val _thumbnailsState = MutableStateFlow<ThumbnailsListState>(UiState.Idle)
     val thumbnailsState: StateFlow<ThumbnailsListState> = _thumbnailsState
 
@@ -39,7 +42,7 @@ class GalleryViewModel(
     }
 
     fun onEvent(galleryEvent: GalleryEvent) = when (galleryEvent) {
-        //is GalleryEvent.LoadFolder -> loadFolder(galleryEvent.folderName)
+        is GalleryEvent.LoadFolder -> loadFolder(galleryEvent.folderName)
 
         GalleryEvent.ClearGallery -> clearGallery()
         GalleryEvent.SelectFiles -> selectFiles()
@@ -53,8 +56,8 @@ class GalleryViewModel(
         GalleryEvent.RefreshGallery -> refreshGallery()
     }
 
-    private fun loadFolder(folderName: String) {
-        TODO("I don't know what to do here yet.")
+    private fun loadFolder(folderName: FolderName) {
+        _folderNameState.value = folderName
     }
 
     private fun clearGallery() {
@@ -157,7 +160,7 @@ class GalleryViewModel(
     private fun previewMedia(mediaId: String) {
         Log.d(TAG, "previewMedia: Previewing media: $mediaId")
         PreviewActivity.startIntent(
-            context = context,
+            context = application,
             mediaId = mediaId
         )
     }

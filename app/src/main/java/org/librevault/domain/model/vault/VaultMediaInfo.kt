@@ -5,7 +5,7 @@ import org.librevault.domain.model.gallery.FileType
 import org.librevault.utils.emptyString
 import java.util.Locale
 
-data class VaultItemInfo(
+data class VaultMediaInfo(
     val id: String,
     val filePath: String,
     val fileName: String,
@@ -14,6 +14,7 @@ data class VaultItemInfo(
     val parentFolder: String,
     val dateAdded: Long,
     val fileType: FileType,
+    val folders: List<FolderName>,
 ) {
     override fun toString(): String = Gson().toJson(this)
 
@@ -32,7 +33,7 @@ data class VaultItemInfo(
     companion object {
         private const val NOT_FOUND = "Not found!"
 
-        fun placeholder(): VaultItemInfo = VaultItemInfo(
+        fun placeholder(): VaultMediaInfo = VaultMediaInfo(
             id = emptyString(),
             filePath = emptyString(),
             fileName = emptyString(),
@@ -40,10 +41,11 @@ data class VaultItemInfo(
             fileSize = 0L,
             parentFolder = emptyString(),
             dateAdded = System.currentTimeMillis(),
-            fileType = FileType.IMAGE
+            fileType = FileType.IMAGE,
+            folders = emptyList()
         )
 
-        fun error(): VaultItemInfo = VaultItemInfo(
+        fun error(): VaultMediaInfo = VaultMediaInfo(
             id = NOT_FOUND,
             filePath = NOT_FOUND,
             fileName = NOT_FOUND,
@@ -51,9 +53,10 @@ data class VaultItemInfo(
             fileSize = -1L,
             parentFolder = NOT_FOUND,
             dateAdded = -1L,
-            fileType = FileType.ERROR
+            fileType = FileType.ERROR,
+            folders = emptyList()
         )
     }
 }
 
-fun String.fromJsonToVaultItemInfo(): VaultItemInfo = Gson().fromJson(this, VaultItemInfo::class.java)
+fun String.fromJsonToVaultMediaInfo(): VaultMediaInfo = Gson().fromJson(this, VaultMediaInfo::class.java)

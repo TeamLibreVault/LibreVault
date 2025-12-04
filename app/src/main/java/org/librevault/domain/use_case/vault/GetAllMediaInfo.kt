@@ -6,7 +6,7 @@ import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onCompletion
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.withContext
-import org.librevault.domain.model.vault.VaultItemInfo
+import org.librevault.domain.model.vault.VaultMediaInfo
 import org.librevault.domain.repository.vault.VaultRepository
 import org.librevault.domain.use_case.utils.getUseCaseScope
 
@@ -16,7 +16,7 @@ class GetAllMediaInfo(
     private val scope = getUseCaseScope()
 
     operator fun invoke(
-        onSuccess: (List<VaultItemInfo>) -> Unit,
+        onSuccess: (List<VaultMediaInfo>) -> Unit,
         onError: (Throwable) -> Unit,
         onCompletion: () -> Unit = {},
     ) {

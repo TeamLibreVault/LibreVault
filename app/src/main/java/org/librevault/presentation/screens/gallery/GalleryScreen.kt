@@ -70,9 +70,9 @@ import org.librevault.R
 import org.librevault.common.state.SplashScreenConditionState
 import org.librevault.common.state.UiState
 import org.librevault.domain.model.gallery.FileType
-import org.librevault.domain.model.vault.aliases.resolveVaultFiles
-import org.librevault.presentation.aliases.EncryptedInfo
+import org.librevault.domain.model.vault.FolderName
 import org.librevault.presentation.aliases.ThumbnailInfo
+import org.librevault.presentation.aliases.ThumbnailInfoList
 import org.librevault.presentation.aliases.ThumbnailsList
 import org.librevault.presentation.events.GalleryEvent
 import org.librevault.presentation.screens.components.FailureDisplay
@@ -95,6 +95,7 @@ class GalleryScreen : Screen {
         val thumbnailsState by viewModel.thumbnailsState.collectAsState()
         val selectFiles by viewModel.selectFiles.collectAsState()
         val encryptState by viewModel.encryptState.collectAsState()
+        val folderName by viewModel.folderNameState.collectAsState()
 
         LaunchedEffect(key1 = Unit) {
             viewModel.onEvent(GalleryEvent.LoadThumbnails())
@@ -104,12 +105,10 @@ class GalleryScreen : Screen {
         LaunchedEffect(key1 = encryptState) {
             if (encryptState is UiState.Success) {
                 Log.d(TAG, "LaunchedEffect: Refreshing gallery")
-                Log.d(TAG, "LaunchedEffect: Thumbnails " + resolveVaultFiles().second)
                 val newFiles =
-                    (encryptState as UiState.Success<List<EncryptedInfo>>).data.map { it.id }
+                    (encryptState as UiState.Success<ThumbnailInfoList>).data.map { it.id }
                 viewModel.onEvent(GalleryEvent.LoadThumbnails(newFiles))
                 viewModel.onEvent(GalleryEvent.LoadMediaInfos(newFiles))
-
             }
         }
 
@@ -130,10 +129,10 @@ class GalleryScreen : Screen {
                             DrawerItem(
                                 iconRes = R.drawable.baseline_image_24,
                                 labelRes = R.string.photos,
-                                selected = true,
+                                selected = folderName == FolderName.IMAGES,
                             ) {
                                 coroutine.launch {
-                                    TODO()
+                                    viewModel.onEvent(GalleryEvent.LoadFolder(FolderName.IMAGES))
                                     drawerState.close()
                                 }
                             }
@@ -143,10 +142,10 @@ class GalleryScreen : Screen {
                             DrawerItem(
                                 iconRes = R.drawable.baseline_play_circle_outline_24,
                                 labelRes = R.string.videos,
-                                selected = false,
+                                selected = folderName == FolderName.VIDEOS,
                             ) {
                                 coroutine.launch {
-                                    TODO()
+                                    viewModel.onEvent(GalleryEvent.LoadFolder(FolderName.VIDEOS))
                                     drawerState.close()
                                 }
                             }
@@ -227,16 +226,34 @@ class GalleryScreen : Screen {
                                         verticalArrangement = Arrangement.spacedBy(8.dp),
                                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                                     ) {
-                                        items(items = state.data, key = { it.id }) { thumb ->
-                                            val context = LocalContext.current
-                                            val thumbnailInfo: ThumbnailInfo =
-                                                when (val info = thumbnailInfoListState) {
-                                                    is UiState.Error -> ThumbnailInfo.error()
-                                                    is UiState.Success -> info.data.firstOrNull { it.id == thumb.id }
-                                                        ?: ThumbnailInfo.error()
-
-                                                    else -> ThumbnailInfo.placeholder()
+                                        val thumbnailsInfo =
+                                            when (val info = thumbnailInfoListState) {
+                                                is UiState.Success -> info.data
+                                                is UiState.Error -> {
+                                                    Log.e(
+                                                        TAG,
+                                                        "Content: Error loading info",
+                                                        info.throwable
+                                                    )
+                                                    emptyList()
                                                 }
+
+                                                else -> emptyList()
+                                            }
+
+                                        val currentFolderThumbs =
+                                            state.data.filter { thumb ->
+                                                folderName in (thumbnailsInfo.firstOrNull { thumb.id == it.id }?.folders
+                                                    ?: emptyList())
+                                            }
+
+                                        items(
+                                            items = currentFolderThumbs,
+                                            key = { it.id }) { thumb ->
+                                            val context = LocalContext.current
+                                            val thumbnailInfo =
+                                                thumbnailsInfo.firstOrNull { it.id == thumb.id }
+                                                    ?: ThumbnailInfo.error()
 
                                             PreviewCard(
                                                 context = context,
@@ -255,7 +272,7 @@ class GalleryScreen : Screen {
                             }
                         }
 
-                        else -> {}
+                        else -> Unit
                     }
 
                     LaunchedEffect(key1 = Unit) {

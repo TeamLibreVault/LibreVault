@@ -8,6 +8,8 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -145,7 +147,15 @@ class PreviewActivity : ComponentActivity() {
 
         Scaffold(
             topBar = {
-                AnimatedVisibility(visible = isUiVisible) {
+                AnimatedVisibility(
+                    visible = isUiVisible,
+                    enter = slideInVertically(
+                        initialOffsetY = { fullHeight -> -fullHeight }
+                    ),
+                    exit = slideOutVertically(
+                        targetOffsetY = { fullHeight -> -fullHeight }
+                    )
+                ) {
                     TopAppBar(
                         title = {
                             Text(

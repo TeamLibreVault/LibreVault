@@ -4,7 +4,6 @@ import android.content.ContentUris
 import android.content.Context
 import android.graphics.Bitmap
 import android.provider.MediaStore
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -22,6 +21,7 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Icon
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -33,19 +33,25 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
-import coil3.compose.rememberAsyncImagePainter
+import coil3.ImageLoader
+import coil3.compose.AsyncImage
 import coil3.request.CachePolicy
 import coil3.request.ImageRequest
 import coil3.request.bitmapConfig
+import coil3.video.VideoFrameDecoder
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import org.librevault.R
+import org.librevault.domain.model.gallery.FileType
 import org.librevault.presentation.screens.gallery.components.media_picker.model.MediaFile
 import java.io.File
 
@@ -127,22 +133,48 @@ fun MediaPickerDialog(
                                         }
                                     }
                             ) {
-                                val imagePainter = rememberAsyncImagePainter(
-                                    model = ImageRequest.Builder(context)
+                                val imageRequest = remember {
+                                    ImageRequest.Builder(context)
                                         .data(media.uri)
                                         .size(128)
                                         .diskCachePolicy(CachePolicy.DISABLED)
                                         .memoryCachePolicy(CachePolicy.DISABLED)
                                         .bitmapConfig(Bitmap.Config.RGB_565)
                                         .build()
-                                )
+                                }
 
-                                Image(
-                                    painter = imagePainter,
-                                    contentDescription = null,
-                                    modifier = Modifier.size(100.dp),
-                                    contentScale = ContentScale.Crop
-                                )
+                                if (FileType.parse(media.file) == FileType.VIDEO) {
+                                    val imageLoader = remember {
+                                        ImageLoader.Builder(context)
+                                            .components {
+                                                add(VideoFrameDecoder.Factory())
+                                            }
+                                            .build()
+                                    }
+
+                                    AsyncImage(
+                                        model = imageRequest,
+                                        imageLoader = imageLoader,
+                                        contentDescription = null,
+                                        contentScale = ContentScale.Crop,
+                                        modifier = Modifier.size(100.dp)
+                                    )
+
+                                    Icon(
+                                        painter = painterResource(R.drawable.baseline_play_arrow_24),
+                                        contentDescription = null,
+                                        modifier = Modifier
+                                            .size(32.dp)
+                                            .align(Alignment.Center),
+                                    )
+                                } else {
+                                    AsyncImage(
+                                        model = imageRequest,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(100.dp),
+                                        contentScale = ContentScale.Crop
+                                    )
+                                }
                             }
                         }
                     }
@@ -174,49 +206,91 @@ fun MediaPickerDialog(
     }
 }
 
-private suspend fun loadMediaFolders(context: Context): List<String> = withContext(Dispatchers.IO) {
-    val folders = mutableSetOf<String>()
-    val projection = arrayOf(MediaStore.Images.Media.DATA)
-    context.contentResolver.query(
-        MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
-        projection,
-        null,
-        null,
-        null
-    )?.use { cursor ->
-        val dataIndex = cursor.getColumnIndexOrThrow(MediaStore.Images.Media.DATA)
-        while (cursor.moveToNext()) {
-            val path = cursor.getString(dataIndex)
-            val parent = File(path).parentFile?.name
-            parent?.let { folders.add(it) }
+private suspend fun loadMediaFolders(context: Context): List<String> =
+    withContext(Dispatchers.IO) {
+        val folders = mutableSetOf<String>()
+
+        val projection = arrayOf(
+            MediaStore.Files.FileColumns.DATA,
+            MediaStore.Files.FileColumns.MEDIA_TYPE
+        )
+
+        val selection = """
+            ${MediaStore.Files.FileColumns.MEDIA_TYPE} = ${MediaStore.Files.FileColumns.MEDIA_TYPE_IMAGE}
+            OR
+            ${MediaStore.Files.FileColumns.MEDIA_TYPE} = ${MediaStore.Files.FileColumns.MEDIA_TYPE_VIDEO}
+        """.trimIndent()
+
+        context.contentResolver.query(
+            MediaStore.Files.getContentUri("external"),
+            projection,
+            selection,
+            null,
+            null
+        )?.use { cursor ->
+            val dataIndex = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns.DATA)
+            while (cursor.moveToNext()) {
+                val path = cursor.getString(dataIndex)
+                val parent = File(path).parentFile?.name
+                parent?.let { folders.add(it) }
+            }
         }
+
+        folders.toList()
     }
-    folders.toList()
-}
 
 private suspend fun loadMediaInFolder(context: Context, folderName: String): List<MediaFile> =
     withContext(Dispatchers.IO) {
         val mediaFiles = mutableListOf<MediaFile>()
-        val projection = arrayOf(MediaStore.Images.Media._ID, MediaStore.Images.Media.DATA)
-        val selection = "${MediaStore.Images.Media.DATA} LIKE ?"
+
+        val projection = arrayOf(
+            MediaStore.Files.FileColumns._ID,
+            MediaStore.Files.FileColumns.DATA,
+            MediaStore.Files.FileColumns.MEDIA_TYPE
+        )
+
+        val selection = """
+            (${MediaStore.Files.FileColumns.MEDIA_TYPE} = ${MediaStore.Files.FileColumns.MEDIA_TYPE_IMAGE}
+            OR
+            ${MediaStore.Files.FileColumns.MEDIA_TYPE} = ${MediaStore.Files.FileColumns.MEDIA_TYPE_VIDEO})
+            AND
+            ${MediaStore.Files.FileColumns.DATA} LIKE ?
+        """.trimIndent()
+
         val selectionArgs = arrayOf("%/$folderName/%")
+
         context.contentResolver.query(
-            MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
+            MediaStore.Files.getContentUri("external"),
             projection,
             selection,
             selectionArgs,
-            "${MediaStore.Images.Media.DATE_ADDED} DESC"
+            "${MediaStore.Files.FileColumns.DATE_ADDED} DESC"
         )?.use { cursor ->
-            val idIndex = cursor.getColumnIndexOrThrow(MediaStore.Images.Media._ID)
-            val dataIndex = cursor.getColumnIndexOrThrow(MediaStore.Images.Media.DATA)
+            val idIndex = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns._ID)
+            val dataIndex = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns.DATA)
+            val typeIndex = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns.MEDIA_TYPE)
+
             while (cursor.moveToNext()) {
                 val id = cursor.getLong(idIndex)
                 val path = cursor.getString(dataIndex)
+                val mediaType = cursor.getInt(typeIndex)
                 val file = File(path)
-                val uri =
-                    ContentUris.withAppendedId(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, id)
-                mediaFiles.add(MediaFile(uri, if (file.exists()) file else null))
+
+                val uri = when (mediaType) {
+                    MediaStore.Files.FileColumns.MEDIA_TYPE_IMAGE ->
+                        ContentUris.withAppendedId(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, id)
+
+                    MediaStore.Files.FileColumns.MEDIA_TYPE_VIDEO ->
+                        ContentUris.withAppendedId(MediaStore.Video.Media.EXTERNAL_CONTENT_URI, id)
+
+                    else -> null
+                }
+
+                if (uri != null) {
+                    mediaFiles.add(MediaFile(uri, if (file.exists()) file else null))
+                }
             }
         }
+
         mediaFiles
     }

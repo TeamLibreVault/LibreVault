@@ -1,9 +1,10 @@
 package org.librevault.presentation.events
 
+import org.librevault.domain.model.vault.FolderName
 import java.io.File
 
 sealed class GalleryEvent {
-    data class LoadFolder(val folderName: String) : GalleryEvent()
+    data class LoadFolder(val folderName: FolderName) : GalleryEvent()
     data class LoadThumbnails(val ids: List<String> = emptyList()) : GalleryEvent()
     object SelectFiles : GalleryEvent()
     object UnselectFiles : GalleryEvent()

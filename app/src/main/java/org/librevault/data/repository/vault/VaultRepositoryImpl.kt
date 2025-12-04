@@ -6,17 +6,17 @@ import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.suspendCancellableCoroutine
 import org.librevault.data.encryption.SecureFileCipher
 import org.librevault.data.repository.vault.util.MediaThumbnailer
-import org.librevault.data.util.extensions.getVaultItemInfo
+import org.librevault.data.util.extensions.getVaultMediaInfo
 import org.librevault.data.util.extensions.toVaultItemContent
 import org.librevault.data.util.vault.getBaseKey
 import org.librevault.domain.model.vault.VaultItemContent
-import org.librevault.domain.model.vault.VaultItemInfo
+import org.librevault.domain.model.vault.VaultMediaInfo
 import org.librevault.domain.model.vault.aliases.resolveVaultData
 import org.librevault.domain.model.vault.aliases.resolveVaultFiles
 import org.librevault.domain.model.vault.aliases.resolveVaultFolders
 import org.librevault.domain.model.vault.aliases.resolveVaultInfo
 import org.librevault.domain.model.vault.aliases.resolveVaultThumb
-import org.librevault.domain.model.vault.fromJsonToVaultItemInfo
+import org.librevault.domain.model.vault.fromJsonToVaultMediaInfo
 import org.librevault.domain.repository.vault.VaultRepository
 import java.io.File
 import kotlin.coroutines.resumeWithException
@@ -26,11 +26,11 @@ private const val TAG = "VaultRepositoryImpl"
 class VaultRepositoryImpl(
     private val mediaThumbnailer: MediaThumbnailer,
 ) : VaultRepository {
-    override suspend fun addItems(files: List<File>): Result<List<VaultItemInfo>> = runCatching {
-        val infos = mutableListOf<VaultItemInfo>()
+    override suspend fun addItems(files: List<File>): Result<List<VaultMediaInfo>> = runCatching {
+        val infos = mutableListOf<VaultMediaInfo>()
 
         for (file in files) {
-            val vaultInfo = file.getVaultItemInfo()
+            val vaultInfo = file.getVaultMediaInfo()
             val (infoOutput, thumbOutput, originalOutput) = resolveVaultFolders(vaultInfo.id)
             val thumbBytes = mediaThumbnailer.compress(file) ?: byteArrayOf()
             val baseKey = getBaseKey()
@@ -75,10 +75,10 @@ class VaultRepositoryImpl(
         resolveVaultData(id).delete()
     }.exceptionOrNull()
 
-    override fun getAllMediaInfo(): Flow<List<VaultItemInfo>> =  getMediaInfoByIds(emptyList())
+    override fun getAllMediaInfo(): Flow<List<VaultMediaInfo>> =  getMediaInfoByIds(emptyList())
 
-    override fun getMediaInfoByIds(ids: List<String>): Flow<List<VaultItemInfo>> = flow {
-        val vaultInfos = mutableListOf<VaultItemInfo>()
+    override fun getMediaInfoByIds(ids: List<String>): Flow<List<VaultMediaInfo>> = flow {
+        val vaultInfos = mutableListOf<VaultMediaInfo>()
         val infoFiles = resolveVaultFiles().second
         val vaultInfoFiles = if (ids.isNotEmpty()) infoFiles.filter { it.name in ids } else infoFiles
         val baseKey = getBaseKey()
@@ -89,18 +89,18 @@ class VaultRepositoryImpl(
             vaultInfos += SecureFileCipher.decryptToBytes(
                 inputFile = resolveVaultInfo(id),
                 key = baseKey
-            ).decodeToString().fromJsonToVaultItemInfo()
+            ).decodeToString().fromJsonToVaultMediaInfo()
         }
         baseKey.fill(0)
         emit(vaultInfos)
     }
 
-    override suspend fun getMediaInfoById(id: String): Result<VaultItemInfo> = runCatching {
+    override suspend fun getMediaInfoById(id: String): Result<VaultMediaInfo> = runCatching {
         val baseKey = getBaseKey()
         val info = SecureFileCipher.decryptToBytes(
             inputFile = resolveVaultInfo(id),
             key = baseKey
-        ).decodeToString().fromJsonToVaultItemInfo()
+        ).decodeToString().fromJsonToVaultMediaInfo()
         baseKey.fill(0)
         info
     }

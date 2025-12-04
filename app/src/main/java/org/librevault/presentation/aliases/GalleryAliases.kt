@@ -2,14 +2,14 @@ package org.librevault.presentation.aliases
 
 import org.librevault.common.state.UiState
 import org.librevault.domain.model.vault.VaultItemContent
-import org.librevault.domain.model.vault.VaultItemInfo
+import org.librevault.domain.model.vault.VaultMediaInfo
 
 typealias ThumbnailsListState = UiState<List<VaultItemContent>>
 typealias ThumbnailsList = List<VaultItemContent>
-typealias ThumbnailInfo = VaultItemInfo
+typealias ThumbnailInfo = VaultMediaInfo
 
 typealias ThumbnailInfoListState = UiState<List<ThumbnailInfo>>
 typealias ThumbnailInfoList = List<ThumbnailInfo>
 
-typealias EncryptedInfo = VaultItemInfo
+typealias EncryptedInfo = VaultMediaInfo
 typealias EncryptListState = UiState<List<EncryptedInfo>>

@@ -2,10 +2,11 @@ package org.librevault.data.util.extensions
 
 import org.librevault.data.util.RandomNameGenerator
 import org.librevault.domain.model.gallery.FileType
-import org.librevault.domain.model.vault.VaultItemInfo
+import org.librevault.domain.model.vault.FolderName
+import org.librevault.domain.model.vault.VaultMediaInfo
 import java.io.File
 
-fun File.getVaultItemInfo(): VaultItemInfo {
+fun File.getVaultMediaInfo(): VaultMediaInfo {
     val file = this
     val id = RandomNameGenerator.generate()
     val fileType = FileType.parse(file)
@@ -15,7 +16,7 @@ fun File.getVaultItemInfo(): VaultItemInfo {
     val fileSize = file.length()
     val extension = file.extension
 
-    return VaultItemInfo(
+    return VaultMediaInfo(
         id = id,
         filePath = filePath,
         fileName = fileName,
@@ -23,6 +24,12 @@ fun File.getVaultItemInfo(): VaultItemInfo {
         fileSize = fileSize,
         parentFolder = fileParent,
         dateAdded = System.currentTimeMillis(),
-        fileType = fileType
+        fileType = fileType,
+        folders = buildList {
+            val type = FileType.parse(this@getVaultMediaInfo)
+            if (type == FileType.IMAGE) add(FolderName.IMAGES) else if (type == FileType.VIDEO) add(
+                FolderName.VIDEOS
+            )
+        }
     )
 }
