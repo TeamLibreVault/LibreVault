@@ -13,33 +13,35 @@ private const val TAG = "MediaThumbnailer"
 
 class MediaThumbnailer(
     private val format: Bitmap.CompressFormat = Bitmap.CompressFormat.JPEG,
-    private val initialQuality: Int = 50,
+    private val initialQuality: Int = 60,
 ) {
 
-    fun compress(file: File): ByteArray? {
-        return try {
-            val bitmap = if (isVideo(file)) {
-                extractVideoThumbnail(file)
-            } else if (isImage(file)) {
-                BitmapFactory.decodeFile(file.absolutePath)
-            } else {
+    fun compress(file: File): ByteArray? = try {
+        val bitmap = when {
+            isVideo(file) -> extractVideoThumbnail(file)
+            isImage(file) -> BitmapFactory.decodeFile(file.absolutePath)
+            else -> {
                 Log.e(TAG, "Unsupported file type: ${file.extension}")
-                null
-            }
-
-            if (bitmap == null)
                 return null
+            }
+        } ?: return null
 
-            val resized = bitmap.cropSquare(file.absolutePath)
+        val resized = bitmap.cropSquare(file.absolutePath)
 
-            @Suppress("SpellCheckingInspection")
-            val baos = ByteArrayOutputStream()
-            resized.compress(format, initialQuality, baos)
-            baos.toByteArray()
-        } catch (e: Exception) {
-            Log.e(TAG, "Error compressing file: ${e.message}")
-            null
-        }
+        val baos = ByteArrayOutputStream()
+        var quality = initialQuality
+        val targetSize = 100 * 1024
+
+        do {
+            baos.reset()
+            resized.compress(format, quality, baos)
+            quality -= 10
+        } while (baos.size() > targetSize && quality > 5)
+
+        baos.toByteArray()
+    } catch (e: Exception) {
+        Log.e(TAG, "Error compressing file: ${e.message}")
+        null
     }
 
     private fun extractVideoThumbnail(file: File): Bitmap? {
