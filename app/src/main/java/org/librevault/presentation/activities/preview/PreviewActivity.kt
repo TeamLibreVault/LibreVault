@@ -30,6 +30,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -200,17 +201,13 @@ class PreviewActivity : ComponentActivity() {
                                     contentDescription = stringResource(R.string.restore_file)
                                 )
                             }
-                        }
+                        },
+                        colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent)
                     )
                 }
             }
-        ) { innerPadding ->
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(innerPadding)
-
-            ) {
+        ) { _ ->
+            Box(modifier = Modifier.fillMaxSize()) {
                 Image(
                     modifier = Modifier
                         .fillMaxSize()
