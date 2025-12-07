@@ -24,4 +24,7 @@
     <string name="media_info_missing">The application was unable to retrieve the media information. This may have occurred unintentionally. You may still restore the media; however, it cannot be restored to its original location. After restoration, the media can be accessed using any file explorer. Restored files will be placed in the device\'s Downloads folder.</string>
     <string name="media_info_missing_title">Unable to Load Media Information</string>
     <string name="file_size">File size: %1$s</string>
+    <string name="aeadbt_err_msg">"\n                We were unable to decrypt some of the files in your vault.\n                The app attempted to open your data using the secure key stored on this device, but the decryption process failed.\n\n                This issue can occur when the app has been uninstalled and then reinstalled, instead of updated through the normal update process. In such cases, Android may permanently remove the original encryption key required to access your data.\n\n                If the secure key was deleted and no proper backup was created beforehand, the affected files cannot be recovered, and the data is likely lost.\n\n                To prevent future data loss, please keep regular backups and avoid reinstalling the app without exporting or saving your encrypted data first.\n            "</string>
+    <string name="decryption_failed">Decryption failed</string>
+    <string name="unknown_error">Unknown error</string>
 </resources>

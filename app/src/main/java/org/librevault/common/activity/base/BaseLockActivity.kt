@@ -24,8 +24,9 @@ abstract class BaseLockActivity : AppCompatActivity() {
 
     private val handler = Handler(Looper.getMainLooper())
 
-    protected abstract var autoLockEnabled: Boolean
-    protected abstract var autoLockTimeout: Long
+    protected abstract val autoLockEnabled: Boolean
+    protected abstract val autoLockTimeout: Long
+    protected open val lockOnCreateEnabled: Boolean = true
 
     private val lockRunnable = Runnable { lockApp() }
 
@@ -86,6 +87,11 @@ abstract class BaseLockActivity : AppCompatActivity() {
             WindowManager.LayoutParams.FLAG_SECURE,
             WindowManager.LayoutParams.FLAG_SECURE
         )
+
+        if (lockOnCreateEnabled.not()) {
+            isLoggedIn = true
+            isBiometricVisible = false
+        }
 
         ProcessLifecycleOwner.get().lifecycle.addObserver(lifecycleEventObserver)
     }

@@ -4,7 +4,6 @@ import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import android.util.Log
-import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.animation.AnimatedVisibility
@@ -54,18 +53,29 @@ import net.engawapg.lib.zoomable.rememberZoomState
 import net.engawapg.lib.zoomable.zoomable
 import org.koin.androidx.viewmodel.ext.android.viewModel
 import org.librevault.R
+import org.librevault.common.activity.base.BaseLockActivity
 import org.librevault.common.state.UiState
 import org.librevault.presentation.aliases.MediaContent
 import org.librevault.presentation.aliases.MediaInfo
 import org.librevault.presentation.events.PreviewEvent
 import org.librevault.presentation.theme.LibreVaultTheme
 import org.librevault.presentation.viewmodels.PreviewViewModel
+import kotlin.time.Duration.Companion.minutes
 
 private const val TAG = "PreviewActivity"
 
-class PreviewActivity : ComponentActivity() {
+class PreviewActivity : BaseLockActivity() {
 
     private val viewModel by viewModel<PreviewViewModel>()
+
+    override val autoLockEnabled: Boolean
+        get() = true
+
+    override val autoLockTimeout: Long
+        get() = 1.minutes.inWholeMilliseconds
+
+    override val lockOnCreateEnabled: Boolean
+        get() = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -118,6 +128,10 @@ class PreviewActivity : ComponentActivity() {
             }
         }
     }
+
+    override fun getBiometricTitle(): String = getString(R.string.app_name)
+    override fun getBiometricSubtitle(): String =
+        getString(R.string.authenticate_to_unlock_the_vault)
 
     @OptIn(ExperimentalMaterial3Api::class)
     @Suppress("DEPRECATION")
@@ -206,12 +220,13 @@ class PreviewActivity : ComponentActivity() {
                     )
                 }
             }
-        ) { _ ->
+        ) { innerPadding ->
             Box(modifier = Modifier.fillMaxSize()) {
                 Image(
                     modifier = Modifier
                         .fillMaxSize()
                         .zoomable(zoomState)
+                        .padding(innerPadding)
                         .clickable(
                             interactionSource = null,
                             indication = null,

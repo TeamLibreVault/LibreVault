@@ -241,30 +241,36 @@ class GalleryScreen : Screen {
                                                 else -> emptyList()
                                             }
 
-                                        val currentFolderThumbs =
-                                            state.data.filter { thumb ->
-                                                folderName in (thumbnailsInfo.firstOrNull { thumb.id == it.id }?.folders
-                                                    ?: emptyList())
-                                            }
+                                        val infoMap = thumbnailsInfo.associateBy { it.id }
+
+                                        val currentFolderThumbs = state.data.filter { thumb ->
+                                            folderName in (infoMap[thumb.id]?.folders ?: emptyList())
+                                        }
+
 
                                         items(
                                             items = currentFolderThumbs,
-                                            key = { it.id }) { thumb ->
+                                            key = { it.id }
+                                        ) { thumbnail ->
                                             val context = LocalContext.current
                                             val thumbnailInfo =
-                                                thumbnailsInfo.firstOrNull { it.id == thumb.id }
-                                                    ?: ThumbnailInfo.error()
+                                                thumbnailsInfo.firstOrNull { it.id == thumbnail.id }
+                                                    ?: ThumbnailInfo.placeholder()
 
                                             PreviewCard(
                                                 context = context,
-                                                thumb = thumb.data,
+                                                thumb = thumbnail.data,
                                                 info = thumbnailInfo,
                                             ) {
                                                 Log.d(
                                                     TAG,
-                                                    "Content: Previewing media: ${thumb.id}"
+                                                    "Content: Previewing media: ${thumbnail.id}"
                                                 )
-                                                viewModel.onEvent(GalleryEvent.PreviewMedia(thumb.id))
+                                                viewModel.onEvent(
+                                                    GalleryEvent.PreviewMedia(
+                                                        thumbnail.id
+                                                    )
+                                                )
                                             }
                                         }
                                     }
@@ -308,7 +314,7 @@ class GalleryScreen : Screen {
 
     @Composable
     private fun DrawerItem(
-        modifier: Modifier = Modifier.Companion,
+        modifier: Modifier = Modifier,
         @DrawableRes iconRes: Int,
         @StringRes labelRes: Int,
         selected: Boolean,

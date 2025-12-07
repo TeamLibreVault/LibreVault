@@ -15,15 +15,14 @@ import org.librevault.presentation.screens.gallery.GalleryScreen
 import org.librevault.presentation.screens.lock.LockScreen
 import org.librevault.presentation.theme.LibreVaultTheme
 import org.librevault.presentation.viewmodels.MainViewModel
-import org.librevault.utils.lazyVar
 
 class MainActivity : BaseLockActivity() {
 
     private val viewModel by viewModel<MainViewModel>()
     private val fpManager by lazy { FilePermissionManager(this) }
 
-    override var autoLockEnabled: Boolean by lazyVar { viewModel.autoLockEnabled.value }
-    override var autoLockTimeout: Long by lazyVar { viewModel.autoLockTimeout.value }
+    override val autoLockEnabled: Boolean by lazy { viewModel.autoLockEnabled.value }
+    override val autoLockTimeout: Long by lazy { viewModel.autoLockTimeout.value }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         viewModel.onEvent(MainEvent.InitSplashScreen(this))
