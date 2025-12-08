@@ -1,9 +1,15 @@
+
+import kys0ff.buildconfig.dsl.formattedHex
+import kys0ff.buildconfig.dsl.getCommitHash
+import kys0ff.buildconfig.dsl.long
+import kys0ff.buildconfig.dsl.string
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
+    id("kys0ff.build.tools")
 }
 
 android {
@@ -22,16 +28,27 @@ android {
 
     buildTypes {
         debug {
+            val commitHash = getCommitHash().formattedHex()
+
             applicationIdSuffix = ".debug"
             versionNameSuffix = "-debug"
+
+            long("BUILD_TIME") set System.currentTimeMillis()
+            string("BUILD_ID") set commitHash
         }
 
         release {
+            val commitHash = getCommitHash().formattedHex()
+
             isMinifyEnabled = true
+
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+
+            long("BUILD_TIME") set System.currentTimeMillis()
+            string("BUILD_ID") set commitHash
         }
     }
     compileOptions {
@@ -45,6 +62,7 @@ android {
     }
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 }
 
