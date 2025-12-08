@@ -10,7 +10,9 @@ import org.librevault.common.vault_consts.VaultDirs
 import org.librevault.domain.model.vault.FolderName
 import org.librevault.domain.use_case_bundle.GalleryUseCases
 import org.librevault.presentation.activities.preview.PreviewActivity
+import org.librevault.presentation.aliases.DeleteSelectionList
 import org.librevault.presentation.aliases.EncryptListState
+import org.librevault.presentation.aliases.MutableDeleteSelectionList
 import org.librevault.presentation.aliases.ThumbnailInfoListState
 import org.librevault.presentation.aliases.ThumbnailsListState
 import org.librevault.presentation.events.GalleryEvent
@@ -34,6 +36,13 @@ class GalleryViewModel(
     private val _selectFiles = MutableStateFlow(false)
     val selectFiles: StateFlow<Boolean> = _selectFiles
 
+    private val _deleteFilesSelection =
+        MutableStateFlow<MutableDeleteSelectionList>(mutableListOf())
+    val deleteFilesSelection: StateFlow<DeleteSelectionList> = _deleteFilesSelection
+
+    private val _deleteSelectedFiles = MutableStateFlow(false)
+    val deleteSelectedFiles: StateFlow<Boolean> = _deleteSelectedFiles
+
     private val _thumbnailInfoListState = MutableStateFlow<ThumbnailInfoListState>(UiState.Idle)
     val thumbnailInfoListState: StateFlow<ThumbnailInfoListState> = _thumbnailInfoListState
 
@@ -54,6 +63,10 @@ class GalleryViewModel(
 
         is GalleryEvent.LoadThumbnails -> loadThumbnails(galleryEvent.ids)
         GalleryEvent.RefreshGallery -> refreshGallery()
+
+        is GalleryEvent.SetDeleteSelection -> setDeleteSelection(galleryEvent.id)
+        is GalleryEvent.DeleteSelectedFiles -> deleteSelectedFiles()
+        GalleryEvent.ClearDeleteSelection -> clearDeleteSelection()
     }
 
     private fun loadFolder(folderName: FolderName) {
@@ -70,6 +83,29 @@ class GalleryViewModel(
 
     private fun unselectFiles() {
         _selectFiles.value = false
+    }
+
+    private fun setDeleteSelection(id: String) {
+        val current = _deleteFilesSelection.value
+        _deleteFilesSelection.value = if (id in current) {
+            current - id
+        } else {
+            current + id
+        } as MutableDeleteSelectionList
+    }
+
+    private fun deleteSelectedFiles() {
+        if (_deleteSelectedFiles.value) {
+            val ids = _deleteFilesSelection.value
+            galleryUseCases.deleteMediaByIds(ids) {
+                _deleteFilesSelection.value = mutableListOf()
+            }
+        } else _deleteSelectedFiles.value = true
+    }
+
+    private fun clearDeleteSelection() {
+        _deleteFilesSelection.value = mutableListOf()
+        _deleteSelectedFiles.value = false
     }
 
     private fun encryptFiles(files: List<File>) {
@@ -100,7 +136,10 @@ class GalleryViewModel(
                     // Append new thumbnails
                     val updatedThumbnails = currentThumbnails + newThumbnails
                     _thumbnailsState.value = UiState.Success(updatedThumbnails)
-                    Log.d(TAG, "loadThumbnails: Thumbs decrypted: ${newThumbnails.joinToString { it.id }}")
+                    Log.d(
+                        TAG,
+                        "loadThumbnails: Thumbs decrypted: ${newThumbnails.joinToString { it.id }}"
+                    )
                 },
                 onError = {
                     _thumbnailsState.value = UiState.Error(it)

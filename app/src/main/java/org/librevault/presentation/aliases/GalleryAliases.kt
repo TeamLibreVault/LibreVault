@@ -13,3 +13,6 @@ typealias ThumbnailInfoList = List<ThumbnailInfo>
 
 typealias EncryptedInfo = VaultMediaInfo
 typealias EncryptListState = UiState<List<EncryptedInfo>>
+
+typealias MutableDeleteSelectionList = MutableList<String>
+typealias DeleteSelectionList = List<String>

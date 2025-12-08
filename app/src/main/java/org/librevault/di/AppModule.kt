@@ -10,6 +10,7 @@ import org.librevault.domain.use_case.preferences.security.GetAutoLockEnabled
 import org.librevault.domain.use_case.preferences.security.GetAutoLockTimeout
 import org.librevault.domain.use_case.vault.AddItems
 import org.librevault.domain.use_case.vault.DecryptMediaById
+import org.librevault.domain.use_case.vault.DeleteMediaByIds
 import org.librevault.domain.use_case.vault.GetAllMediaInfo
 import org.librevault.domain.use_case.vault.GetAllThumbnails
 import org.librevault.domain.use_case.vault.GetAllThumbnailsById
@@ -42,8 +43,18 @@ val vaultModule = module {
     single { GetMediaInfoById(get()) }
     single { GetMediaInfoByIds(get()) }
     single { DecryptMediaById(get()) }
+    single { DeleteMediaByIds(get()) }
 
-    single { GalleryUseCases(get(), get(), get(), get(), get()) }
+    single {
+        GalleryUseCases(
+            addItems = get(),
+            getAllThumbnailsById = get(),
+            getAllThumbnails = get(),
+            getAllMediaInfo = get(),
+            getMediaInfoByIds = get(),
+            deleteMediaByIds = get()
+        )
+    }
     single { PreviewUseCases(get(), get()) }
 }
 

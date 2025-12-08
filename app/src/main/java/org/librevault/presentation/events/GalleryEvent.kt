@@ -10,7 +10,10 @@ sealed class GalleryEvent {
     object UnselectFiles : GalleryEvent()
     data class EncryptFiles(val files: List<File>) : GalleryEvent()
     data class LoadMediaInfos(val ids: List<String> = emptyList()) : GalleryEvent()
-    data class PreviewMedia(val id: String): GalleryEvent()
+    data class PreviewMedia(val id: String) : GalleryEvent()
     object RefreshGallery : GalleryEvent()
     object ClearGallery : GalleryEvent()
+    data class SetDeleteSelection(val id: String) : GalleryEvent()
+    data object DeleteSelectedFiles : GalleryEvent()
+    data object ClearDeleteSelection : GalleryEvent()
 }

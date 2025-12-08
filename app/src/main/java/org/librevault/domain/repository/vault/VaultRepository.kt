@@ -22,4 +22,6 @@ interface VaultRepository {
     fun getThumbnailsByIds(ids: List<String>): Flow<Result<List<VaultItemContent>>>
 
     suspend fun getMediaContentById(id: String): Result<VaultItemContent>
+
+    fun deleteMediaByIds(ids: List<String>): Result<Unit>
 }

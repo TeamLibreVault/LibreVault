@@ -75,12 +75,13 @@ class VaultRepositoryImpl(
         resolveVaultData(id).delete()
     }.exceptionOrNull()
 
-    override fun getAllMediaInfo(): Flow<List<VaultMediaInfo>> =  getMediaInfoByIds(emptyList())
+    override fun getAllMediaInfo(): Flow<List<VaultMediaInfo>> = getMediaInfoByIds(emptyList())
 
     override fun getMediaInfoByIds(ids: List<String>): Flow<List<VaultMediaInfo>> = flow {
         val vaultInfos = mutableListOf<VaultMediaInfo>()
         val infoFiles = resolveVaultFiles().second
-        val vaultInfoFiles = if (ids.isNotEmpty()) infoFiles.filter { it.name in ids } else infoFiles
+        val vaultInfoFiles =
+            if (ids.isNotEmpty()) infoFiles.filter { it.name in ids } else infoFiles
         val baseKey = getBaseKey()
 
         vaultInfoFiles.forEach { thumbFile ->
@@ -105,30 +106,32 @@ class VaultRepositoryImpl(
         info
     }
 
-    override fun getAllThumbnails(): Flow<Result<List<VaultItemContent>>> = getThumbnailsByIds(emptyList())
+    override fun getAllThumbnails(): Flow<Result<List<VaultItemContent>>> =
+        getThumbnailsByIds(emptyList())
 
-    override fun getThumbnailsByIds(ids: List<String>): Flow<Result<List<VaultItemContent>>> = flow {
-        runCatching {
-            val vaultThumbs = mutableListOf<VaultItemContent>()
+    override fun getThumbnailsByIds(ids: List<String>): Flow<Result<List<VaultItemContent>>> =
+        flow {
+            runCatching {
+                val vaultThumbs = mutableListOf<VaultItemContent>()
 
-            val vaultThumbFiles =
-                if (ids.isNotEmpty()) resolveVaultFiles().second.filter { it.name in ids } else resolveVaultFiles().second
-            Log.d(TAG, "getAllThumbnails: Thumbnails: ${vaultThumbFiles.size}")
-            val baseKey = getBaseKey()
+                val vaultThumbFiles =
+                    if (ids.isNotEmpty()) resolveVaultFiles().second.filter { it.name in ids } else resolveVaultFiles().second
+                Log.d(TAG, "getAllThumbnails: Thumbnails: ${vaultThumbFiles.size}")
+                val baseKey = getBaseKey()
 
-            vaultThumbFiles.forEach { thumbFile ->
-                val id = thumbFile.nameWithoutExtension
+                vaultThumbFiles.forEach { thumbFile ->
+                    val id = thumbFile.nameWithoutExtension
 
-                vaultThumbs += SecureFileCipher.decryptToBytes(
-                    inputFile = resolveVaultThumb(id),
-                    key = baseKey
-                ).toVaultItemContent(id)
-                Log.d(TAG, "getAllThumbnails: Thumbnail: $id")
-            }
-            baseKey.fill(0)
-            emit(Result.success(vaultThumbs))
-        }.onFailure { emit(Result.failure(it)) }
-    }
+                    vaultThumbs += SecureFileCipher.decryptToBytes(
+                        inputFile = resolveVaultThumb(id),
+                        key = baseKey
+                    ).toVaultItemContent(id)
+                    Log.d(TAG, "getAllThumbnails: Thumbnail: $id")
+                }
+                baseKey.fill(0)
+                emit(Result.success(vaultThumbs))
+            }.onFailure { emit(Result.failure(it)) }
+        }
 
     override suspend fun getMediaContentById(id: String): Result<VaultItemContent> = runCatching {
         val baseKey = getBaseKey()
@@ -138,5 +141,14 @@ class VaultRepositoryImpl(
         ).toVaultItemContent(id)
         baseKey.fill(0)
         decryptedContent
+    }
+
+    override fun deleteMediaByIds(ids: List<String>) = runCatching {
+        ids.forEach { id ->
+            resolveVaultInfo(id).delete()
+            resolveVaultThumb(id).delete()
+            resolveVaultData(id).delete()
+            Log.d(TAG, "deleteMediaByIds: Deleted: $id")
+        }
     }
 }
