@@ -92,7 +92,7 @@ class GalleryScreen : Screen {
                 viewModel.onEvent(GalleryEvent.LoadMediaInfos(newFiles))
             }
         }
-        // Use UiState instead
+        // TODO: Use UiState instead
         LaunchedEffect(key1 = deleteFilesSelection, key2 = deleteSelectedFiles) {
             if (deleteSelectedFiles && deleteFilesSelection.isEmpty()) {
                 viewModel.onEvent(GalleryEvent.ClearDeleteSelection)
