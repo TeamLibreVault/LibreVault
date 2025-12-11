@@ -20,13 +20,11 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalNavigationDrawer
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -55,6 +53,7 @@ import org.librevault.presentation.screens.gallery.components.DeleteMediaConfirm
 import org.librevault.presentation.screens.gallery.components.DrawerItem
 import org.librevault.presentation.screens.gallery.components.EmptyView
 import org.librevault.presentation.screens.gallery.components.EncryptingDialog
+import org.librevault.presentation.screens.gallery.components.GalleryTopBar
 import org.librevault.presentation.screens.gallery.components.PreviewCard
 import org.librevault.presentation.screens.gallery.components.media_picker.MediaPickerDialog
 import org.librevault.presentation.viewmodels.GalleryViewModel
@@ -159,33 +158,12 @@ class GalleryScreen : Screen {
         ) {
             Scaffold(
                 topBar = {
-                    TopAppBar(
-                        title = { Text(text = stringResource(R.string.app_name)) },
-                        actions = {
-                            if (deleteFilesSelection.isNotEmpty()) IconButton(
-                                onClick = {
-                                    viewModel.onEvent(GalleryEvent.DeleteSelectedFiles)
-                                }
-                            ) {
-                                Icon(
-                                    painter = painterResource(id = R.drawable.baseline_delete_24),
-                                    contentDescription = stringResource(id = R.string.delete)
-                                )
-                            }
-                        },
-                        navigationIcon = {
-                            IconButton(
-                                onClick = {
-                                    coroutine.launch { drawerState.open() }
-                                }
-                            ) {
-                                Icon(
-                                    painter = painterResource(id = R.drawable.baseline_menu_24),
-                                    contentDescription = stringResource(id = R.string.navigate_up)
-                                )
-                            }
-                        }
-                    )
+                    GalleryTopBar(
+                        deleteSelection = deleteFilesSelection,
+                        drawerState = drawerState
+                    ) {
+                        viewModel.onEvent(GalleryEvent.DeleteSelectedFiles)
+                    }
                 },
                 floatingActionButton = {
                     FloatingActionButton(
@@ -271,15 +249,27 @@ class GalleryScreen : Screen {
                                                     )
                                                 }
                                             ) {
-                                                Log.d(
-                                                    TAG,
-                                                    "Content: Previewing media: ${thumbnail.id}"
-                                                )
-                                                viewModel.onEvent(
-                                                    GalleryEvent.PreviewMedia(
-                                                        thumbnail.id
+                                                if (deleteFilesSelection.isEmpty()) {
+                                                    Log.d(
+                                                        TAG,
+                                                        "Content: Previewing media: ${thumbnail.id}"
                                                     )
-                                                )
+                                                    viewModel.onEvent(
+                                                        GalleryEvent.PreviewMedia(
+                                                            id = thumbnail.id
+                                                        )
+                                                    )
+                                                } else {
+                                                    Log.d(
+                                                        TAG,
+                                                        "Content: Delete media selection: ${thumbnail.id}"
+                                                    )
+                                                    viewModel.onEvent(
+                                                        GalleryEvent.SetDeleteSelection(
+                                                            id = thumbnail.id
+                                                        )
+                                                    )
+                                                }
                                             }
                                         }
                                     }

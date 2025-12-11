@@ -8,7 +8,7 @@ repositories {
 }
 
 dependencies {
-    implementation("com.android.tools.build:gradle:8.13.1")
+    implementation("com.android.tools.build:gradle:8.13.2")
 }
 
 gradlePlugin {
