@@ -14,6 +14,8 @@ sealed class GalleryEvent {
     object RefreshGallery : GalleryEvent()
     object ClearGallery : GalleryEvent()
     data class SetDeleteSelection(val id: String) : GalleryEvent()
+    data object ConfirmDeleteSelection : GalleryEvent()
     data object DeleteSelectedFiles : GalleryEvent()
     data object ClearDeleteSelection : GalleryEvent()
+    data object CancelDeleteSelection : GalleryEvent()
 }

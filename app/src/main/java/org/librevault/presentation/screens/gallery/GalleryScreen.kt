@@ -1,6 +1,7 @@
 package org.librevault.presentation.screens.gallery
 
 import android.util.Log
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -40,6 +41,7 @@ import cafe.adriel.voyager.core.screen.Screen
 import kotlinx.coroutines.launch
 import org.koin.androidx.compose.koinViewModel
 import org.librevault.R
+import org.librevault.common.state.SelectState
 import org.librevault.common.state.SplashScreenConditionState
 import org.librevault.common.state.UiState
 import org.librevault.domain.model.vault.FolderName
@@ -57,6 +59,7 @@ import org.librevault.presentation.screens.gallery.components.GalleryTopBar
 import org.librevault.presentation.screens.gallery.components.PreviewCard
 import org.librevault.presentation.screens.gallery.components.media_picker.MediaPickerDialog
 import org.librevault.presentation.viewmodels.GalleryViewModel
+import org.librevault.utils.ignore
 
 private const val TAG = "GalleryScreen"
 
@@ -72,10 +75,15 @@ class GalleryScreen : Screen {
         val thumbnailInfoListState by viewModel.thumbnailInfoListState.collectAsState()
         val thumbnailsState by viewModel.thumbnailsState.collectAsState()
         val selectFiles by viewModel.selectFiles.collectAsState()
-        val deleteFilesSelection by viewModel.deleteFilesSelection.collectAsState()
-        val deleteSelectedFiles by viewModel.deleteSelectedFiles.collectAsState()
+        val deleteFilesSelectionState by viewModel.deleteFilesSelectionState.collectAsState()
         val encryptState by viewModel.encryptState.collectAsState()
         val folderName by viewModel.folderNameState.collectAsState()
+
+        BackHandler(enabled = deleteFilesSelectionState is SelectState.Selecting) {
+            if (deleteFilesSelectionState is SelectState.Selecting) {
+                viewModel.onEvent(GalleryEvent.CancelDeleteSelection)
+            }
+        }
 
         LaunchedEffect(key1 = Unit) {
             viewModel.onEvent(GalleryEvent.LoadThumbnails())
@@ -91,9 +99,11 @@ class GalleryScreen : Screen {
                 viewModel.onEvent(GalleryEvent.LoadMediaInfos(newFiles))
             }
         }
-        // TODO: Use UiState instead
-        LaunchedEffect(key1 = deleteFilesSelection, key2 = deleteSelectedFiles) {
-            if (deleteSelectedFiles && deleteFilesSelection.isEmpty()) {
+
+        LaunchedEffect(key1 = deleteFilesSelectionState) {
+            val isFinished = deleteFilesSelectionState is SelectState.Finished
+
+            if (isFinished) {
                 viewModel.onEvent(GalleryEvent.ClearDeleteSelection)
                 viewModel.onEvent(GalleryEvent.LoadThumbnails())
             }
@@ -159,10 +169,10 @@ class GalleryScreen : Screen {
             Scaffold(
                 topBar = {
                     GalleryTopBar(
-                        deleteSelection = deleteFilesSelection,
+                        deleteSelections = deleteFilesSelectionState.currentSelection,
                         drawerState = drawerState
                     ) {
-                        viewModel.onEvent(GalleryEvent.DeleteSelectedFiles)
+                        viewModel.onEvent(GalleryEvent.ConfirmDeleteSelection)
                     }
                 },
                 floatingActionButton = {
@@ -205,22 +215,14 @@ class GalleryScreen : Screen {
                                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                                     ) {
                                         val thumbnailsInfo =
-                                            when (val info = thumbnailInfoListState) {
-                                                is UiState.Success -> info.data
-                                                is UiState.Error -> {
-                                                    Log.e(
-                                                        TAG,
-                                                        "Content: Error loading info",
-                                                        info.throwable
-                                                    )
-                                                    emptyList()
-                                                }
-
-                                                else -> emptyList()
+                                            thumbnailInfoListState.dataOrNull ?: run {
+                                                Log.e(
+                                                    TAG,
+                                                    "Error loading thumbnails info: ${thumbnailInfoListState.throwableOrNull}"
+                                                )
+                                                emptyList()
                                             }
-
                                         val infoMap = thumbnailsInfo.associateBy { it.id }
-
                                         val currentFolderThumbs = state.data.filter { thumb ->
                                             folderName in (infoMap[thumb.id]?.folders
                                                 ?: emptyList())
@@ -240,7 +242,7 @@ class GalleryScreen : Screen {
                                                 context = context,
                                                 thumb = thumbnail.data,
                                                 info = thumbnailInfo,
-                                                selected = thumbnail.id in deleteFilesSelection,
+                                                selected = thumbnail.id in deleteFilesSelectionState.currentSelection,
                                                 onLongClick = {
                                                     viewModel.onEvent(
                                                         GalleryEvent.SetDeleteSelection(
@@ -249,17 +251,9 @@ class GalleryScreen : Screen {
                                                     )
                                                 }
                                             ) {
-                                                if (deleteFilesSelection.isEmpty()) {
-                                                    Log.d(
-                                                        TAG,
-                                                        "Content: Previewing media: ${thumbnail.id}"
-                                                    )
-                                                    viewModel.onEvent(
-                                                        GalleryEvent.PreviewMedia(
-                                                            id = thumbnail.id
-                                                        )
-                                                    )
-                                                } else {
+                                                val isSelecting = deleteFilesSelectionState is SelectState.Selecting
+
+                                                if (isSelecting) {
                                                     Log.d(
                                                         TAG,
                                                         "Content: Delete media selection: ${thumbnail.id}"
@@ -269,7 +263,19 @@ class GalleryScreen : Screen {
                                                             id = thumbnail.id
                                                         )
                                                     )
+
+                                                    return@PreviewCard
                                                 }
+
+                                                Log.d(
+                                                    TAG,
+                                                    "Content: Previewing media: ${thumbnail.id}"
+                                                )
+                                                viewModel.onEvent(
+                                                    GalleryEvent.PreviewMedia(
+                                                        id = thumbnail.id
+                                                    )
+                                                )
                                             }
                                         }
                                     }
@@ -277,7 +283,7 @@ class GalleryScreen : Screen {
                             }
                         }
 
-                        else -> Unit
+                        else -> ignore()
                     }
 
                     LaunchedEffect(key1 = Unit) {
@@ -287,8 +293,8 @@ class GalleryScreen : Screen {
             }
         }
 
-        if (deleteSelectedFiles) DeleteMediaConfirmationDialog(
-            onDismissRequest = { viewModel.onEvent(GalleryEvent.ClearDeleteSelection) },
+        if (deleteFilesSelectionState is SelectState.Confirming) DeleteMediaConfirmationDialog(
+            onDismissRequest = { viewModel.onEvent(GalleryEvent.CancelDeleteSelection) },
         ) {
             viewModel.onEvent(GalleryEvent.DeleteSelectedFiles)
         }

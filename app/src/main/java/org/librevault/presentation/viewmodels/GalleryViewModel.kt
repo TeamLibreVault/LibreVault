@@ -5,12 +5,13 @@ import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import org.librevault.common.state.SelectState
 import org.librevault.common.state.UiState
 import org.librevault.common.vault_consts.VaultDirs
 import org.librevault.domain.model.vault.FolderName
 import org.librevault.domain.use_case_bundle.GalleryUseCases
 import org.librevault.presentation.activities.preview.PreviewActivity
-import org.librevault.presentation.aliases.DeleteSelectionList
+import org.librevault.presentation.aliases.DeleteSelectionState
 import org.librevault.presentation.aliases.EncryptListState
 import org.librevault.presentation.aliases.MutableDeleteSelectionList
 import org.librevault.presentation.aliases.ThumbnailInfoListState
@@ -36,9 +37,12 @@ class GalleryViewModel(
     private val _selectFiles = MutableStateFlow(false)
     val selectFiles: StateFlow<Boolean> = _selectFiles
 
+    private val _deleteFilesSelectionState = MutableStateFlow<DeleteSelectionState>(SelectState.Idle)
+    val deleteFilesSelectionState: StateFlow<DeleteSelectionState> = _deleteFilesSelectionState
+
     private val _deleteFilesSelection =
         MutableStateFlow<MutableDeleteSelectionList>(mutableListOf())
-    val deleteFilesSelection: StateFlow<DeleteSelectionList> = _deleteFilesSelection
+    val deleteFilesSelection: MutableStateFlow<MutableDeleteSelectionList> = _deleteFilesSelection
 
     private val _deleteSelectedFiles = MutableStateFlow(false)
     val deleteSelectedFiles: StateFlow<Boolean> = _deleteSelectedFiles
@@ -65,8 +69,10 @@ class GalleryViewModel(
         GalleryEvent.RefreshGallery -> refreshGallery()
 
         is GalleryEvent.SetDeleteSelection -> setDeleteSelection(galleryEvent.id)
+        GalleryEvent.ConfirmDeleteSelection -> confirmDeleteSelection()
         is GalleryEvent.DeleteSelectedFiles -> deleteSelectedFiles()
         GalleryEvent.ClearDeleteSelection -> clearDeleteSelection()
+        GalleryEvent.CancelDeleteSelection -> cancelDeleteSelection()
     }
 
     private fun loadFolder(folderName: FolderName) {
@@ -86,26 +92,40 @@ class GalleryViewModel(
     }
 
     private fun setDeleteSelection(id: String) {
-        val current = _deleteFilesSelection.value
-        _deleteFilesSelection.value = if (id in current) {
-            current - id
+        val currentSelection = _deleteFilesSelectionState.value.currentSelection
+
+        val newSelection = if (id in currentSelection) {
+            currentSelection - id
         } else {
-            current + id
-        } as MutableDeleteSelectionList
+            currentSelection + id
+        }
+
+        _deleteFilesSelectionState.value = SelectState.Selecting(newSelection)
+    }
+
+    private fun confirmDeleteSelection() {
+        val currentSelection = _deleteFilesSelectionState.value.currentSelection
+        _deleteFilesSelectionState.value = SelectState.Confirming(currentSelection)
     }
 
     private fun deleteSelectedFiles() {
-        if (_deleteSelectedFiles.value) {
-            val ids = _deleteFilesSelection.value
-            galleryUseCases.deleteMediaByIds(ids) {
-                _deleteFilesSelection.value = mutableListOf()
-            }
-        } else _deleteSelectedFiles.value = true
+        if (_deleteFilesSelectionState.value !is SelectState.Confirming) return
+
+        val currentSelection = _deleteFilesSelectionState.value.currentSelection
+
+        if (currentSelection.isEmpty()) return
+
+        galleryUseCases.deleteMediaByIds(currentSelection) {
+            _deleteFilesSelectionState.value = SelectState.Finished
+        }
     }
 
     private fun clearDeleteSelection() {
-        _deleteFilesSelection.value = mutableListOf()
-        _deleteSelectedFiles.value = false
+        _deleteFilesSelectionState.value = SelectState.Finished
+    }
+
+    private fun cancelDeleteSelection() {
+        _deleteFilesSelectionState.value = SelectState.Idle
     }
 
     private fun encryptFiles(files: List<File>) {

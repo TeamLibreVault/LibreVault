@@ -23,17 +23,17 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import kotlinx.coroutines.launch
 import org.librevault.R
-import org.librevault.presentation.aliases.DeleteSelectionList
+import org.librevault.presentation.aliases.DeleteSelection
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun GalleryTopBar(
-    deleteSelection: DeleteSelectionList,
+    deleteSelections: Set<DeleteSelection>,
     drawerState: DrawerState,
     onDeleteSelected: () -> Unit
 ) {
     val coroutineScope = rememberCoroutineScope()
-    val selectionActive = deleteSelection.isNotEmpty()
+    val selectionActive = deleteSelections.isNotEmpty()
 
     TopAppBar(
         scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior(),
@@ -50,7 +50,7 @@ fun GalleryTopBar(
                     Row {
                         Text(stringResource(R.string.delete))
                         AnimatedContent(
-                            targetState = deleteSelection.size,
+                            targetState = deleteSelections.size,
                             transitionSpec = {
                                 if (targetState > initialState) {
                                     // Number increasing → slide up
