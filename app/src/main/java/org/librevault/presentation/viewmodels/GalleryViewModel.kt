@@ -100,6 +100,7 @@ class GalleryViewModel(
             val currentFolder = _folderNameState.value
 
             if (ids.isEmpty() && !refresh) {
+                Log.d(TAG, "Load cached data enabled!")
                 // Use cached data if available
                 val cached = _allFolderThumbsState.value
                 if (cached.containsKey(currentFolder)) {
@@ -107,7 +108,7 @@ class GalleryViewModel(
                         UiState.Success(cached[currentFolder].orEmpty())
                     return@launch
                 }
-            }
+            } else Log.d(TAG, "Load cached data disabled!")
 
             val mediaInfos = try {
                 galleryUseCases.getAllMediaInfo()
@@ -146,11 +147,18 @@ class GalleryViewModel(
             val existingThumbs =
                 _allFolderThumbsState.value[currentFolder].orEmpty()
 
+            // Fixed
             val mergedThumbs =
-                (existingThumbs + mediaThumbnails)
-                    .associateBy { it.info.id }   // or thumb.id if exposed
-                    .values
-                    .toList()
+                if (refresh) {
+                    // Full replacement on refresh
+                    mediaThumbnails
+                } else {
+                    // Merge only when NOT refreshing
+                    (existingThumbs + mediaThumbnails)
+                        .associateBy { it.info.id }
+                        .values
+                        .toList()
+                }
             val updatedMap =
                 _allFolderThumbsState.value + (currentFolder to mergedThumbs)
 
