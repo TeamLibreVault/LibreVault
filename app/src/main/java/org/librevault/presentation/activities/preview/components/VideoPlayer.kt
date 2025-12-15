@@ -31,11 +31,12 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import cafe.adriel.voyager.navigator.currentOrThrow
 import org.librevault.R
+import org.librevault.presentation.aliases.MediaInfo
 import java.io.File
 import java.io.FileOutputStream
 
 @Composable
-fun VideoPlayer(byteArray: ByteArray, modifier: Modifier = Modifier) {
+fun VideoPlayer(mediaInfo: MediaInfo, byteArray: ByteArray, modifier: Modifier = Modifier) {
     val activity = LocalActivity.currentOrThrow
     val context = LocalContext.current
     var isPlaying by remember { mutableStateOf(true) }
@@ -43,7 +44,7 @@ fun VideoPlayer(byteArray: ByteArray, modifier: Modifier = Modifier) {
 
     // Create a temp file from byte array
     LaunchedEffect(key1 = byteArray) {
-        tempFile = File.createTempFile("temp_video", ".mp4", context.cacheDir).apply {
+        tempFile = File.createTempFile("temp_video", ".${mediaInfo.fileExtension}", context.cacheDir).apply {
             deleteOnExit()
             FileOutputStream(this).use { it.write(byteArray) }
             Log.d("VideoPlayer", "Video file created: $absolutePath")

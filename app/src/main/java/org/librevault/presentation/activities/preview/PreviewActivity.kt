@@ -223,6 +223,7 @@ class PreviewActivity : BaseLockActivity() {
                 }
 
                 FileType.VIDEO -> VideoPlayer(
+                    mediaInfo = mediaInfo,
                     byteArray = mediaContent.data,
                     modifier = Modifier
                         .fillMaxSize()
