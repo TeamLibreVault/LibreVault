@@ -44,10 +44,10 @@ import org.librevault.R
 import org.librevault.common.state.SelectState
 import org.librevault.common.state.SplashScreenConditionState
 import org.librevault.common.state.UiState
+import org.librevault.domain.model.gallery.MediaId
 import org.librevault.domain.model.vault.FolderName
-import org.librevault.presentation.aliases.ThumbnailInfo
+import org.librevault.presentation.aliases.MediaThumbnail
 import org.librevault.presentation.aliases.ThumbnailInfoList
-import org.librevault.presentation.aliases.ThumbnailsList
 import org.librevault.presentation.events.GalleryEvent
 import org.librevault.presentation.screens.components.FailureDisplay
 import org.librevault.presentation.screens.components.LoadingIndicator
@@ -72,8 +72,8 @@ class GalleryScreen : Screen {
         val coroutine = rememberCoroutineScope()
         val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
 
-        val thumbnailInfoListState by viewModel.thumbnailInfoListState.collectAsState()
-        val thumbnailsState by viewModel.thumbnailsState.collectAsState()
+        val allFolderNamesState by viewModel.allFolderNamesState.collectAsState()
+        val currentFolderThumbsState by viewModel.currentFolderThumbsState.collectAsState()
         val selectFiles by viewModel.selectFiles.collectAsState()
         val deleteFilesSelectionState by viewModel.deleteFilesSelectionState.collectAsState()
         val encryptState by viewModel.encryptState.collectAsState()
@@ -86,17 +86,15 @@ class GalleryScreen : Screen {
         }
 
         LaunchedEffect(key1 = Unit) {
-            viewModel.onEvent(GalleryEvent.LoadThumbnails())
-            viewModel.onEvent(GalleryEvent.LoadMediaInfos())
+            viewModel.onEvent(GalleryEvent.LoadFolder(FolderName.IMAGES))
         }
 
         LaunchedEffect(key1 = encryptState) {
             if (encryptState is UiState.Success) {
                 Log.d(TAG, "LaunchedEffect: Refreshing gallery")
                 val newFiles =
-                    (encryptState as UiState.Success<ThumbnailInfoList>).data.map { it.id }
+                    (encryptState as UiState.Success<ThumbnailInfoList>).data.map { MediaId(it.id) }
                 viewModel.onEvent(GalleryEvent.LoadThumbnails(newFiles))
-                viewModel.onEvent(GalleryEvent.LoadMediaInfos(newFiles))
             }
         }
 
@@ -105,7 +103,7 @@ class GalleryScreen : Screen {
 
             if (isFinished) {
                 viewModel.onEvent(GalleryEvent.ClearDeleteSelection)
-                viewModel.onEvent(GalleryEvent.LoadThumbnails())
+                viewModel.onEvent(GalleryEvent.LoadThumbnails(forceRefresh = true))
             }
         }
 
@@ -159,8 +157,17 @@ class GalleryScreen : Screen {
                             )
                         }
 
-                        items(items = emptyList<String>()) {
-                            // TODO
+                        items(items = allFolderNamesState.drop(2)) { folder ->
+                            DrawerItem(
+                                iconRes = R.drawable.baseline_folder_24,
+                                label = folder(),
+                                selected = folder == folderName,
+                            ) {
+                                coroutine.launch {
+                                    viewModel.onEvent(GalleryEvent.LoadFolder(folder))
+                                    drawerState.close()
+                                }
+                            }
                         }
                     }
                 }
@@ -170,7 +177,13 @@ class GalleryScreen : Screen {
                 topBar = {
                     GalleryTopBar(
                         deleteSelections = deleteFilesSelectionState.currentSelection,
-                        drawerState = drawerState
+                        drawerState = drawerState,
+                        onSelectAllClicked = {
+
+                        },
+                        onDeselectAllClicked = {
+
+                        },
                     ) {
                         viewModel.onEvent(GalleryEvent.ConfirmDeleteSelection)
                     }
@@ -191,7 +204,7 @@ class GalleryScreen : Screen {
                         .fillMaxSize()
                         .padding(innerPadding)
                 ) {
-                    when (val state = thumbnailsState) {
+                    when (val state = currentFolderThumbsState) {
                         is UiState.Error -> {
                             FailureDisplay(throwable = state.throwable)
                         }
@@ -201,7 +214,7 @@ class GalleryScreen : Screen {
                             LoadingIndicator()
                         }
 
-                        is UiState.Success<ThumbnailsList> -> {
+                        is UiState.Success<List<MediaThumbnail>> -> {
                             Log.d(TAG, "Content: Thumbnails loaded: ${state.data.size}")
 
                             when (state.data.size) {
@@ -214,53 +227,37 @@ class GalleryScreen : Screen {
                                         verticalArrangement = Arrangement.spacedBy(8.dp),
                                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                                     ) {
-                                        val thumbnailsInfo =
-                                            thumbnailInfoListState.dataOrNull ?: run {
-                                                Log.e(
-                                                    TAG,
-                                                    "Error loading thumbnails info: ${thumbnailInfoListState.throwableOrNull}"
-                                                )
-                                                emptyList()
-                                            }
-                                        val infoMap = thumbnailsInfo.associateBy { it.id }
-                                        val currentFolderThumbs = state.data.filter { thumb ->
-                                            folderName in (infoMap[thumb.id]?.folders
-                                                ?: emptyList())
-                                        }
-
-
                                         items(
-                                            items = currentFolderThumbs,
-                                            key = { it.id }
+                                            items = state.data,
+                                            key = { it.info.id }
                                         ) { thumbnail ->
                                             val context = LocalContext.current
-                                            val thumbnailInfo =
-                                                thumbnailsInfo.firstOrNull { it.id == thumbnail.id }
-                                                    ?: ThumbnailInfo.placeholder()
+                                            val thumbnailInfo = thumbnail.info
 
                                             PreviewCard(
                                                 context = context,
-                                                thumb = thumbnail.data,
+                                                thumb = thumbnail.content,
                                                 info = thumbnailInfo,
-                                                selected = thumbnail.id in deleteFilesSelectionState.currentSelection,
+                                                selected = thumbnailInfo.id in deleteFilesSelectionState.currentSelection,
                                                 onLongClick = {
                                                     viewModel.onEvent(
                                                         GalleryEvent.SetDeleteSelection(
-                                                            id = thumbnail.id
+                                                            id = thumbnailInfo.id
                                                         )
                                                     )
                                                 }
                                             ) {
-                                                val isSelecting = deleteFilesSelectionState is SelectState.Selecting
+                                                val isSelecting =
+                                                    deleteFilesSelectionState is SelectState.Selecting
 
                                                 if (isSelecting) {
                                                     Log.d(
                                                         TAG,
-                                                        "Content: Delete media selection: ${thumbnail.id}"
+                                                        "Content: Delete media selection: ${thumbnail.info.id}"
                                                     )
                                                     viewModel.onEvent(
                                                         GalleryEvent.SetDeleteSelection(
-                                                            id = thumbnail.id
+                                                            id = thumbnail.info.id
                                                         )
                                                     )
 
@@ -269,11 +266,11 @@ class GalleryScreen : Screen {
 
                                                 Log.d(
                                                     TAG,
-                                                    "Content: Previewing media: ${thumbnail.id}"
+                                                    "Content: Previewing media: ${thumbnail.info.id}"
                                                 )
                                                 viewModel.onEvent(
                                                     GalleryEvent.PreviewMedia(
-                                                        id = thumbnail.id
+                                                        id = thumbnailInfo.id
                                                     )
                                                 )
                                             }

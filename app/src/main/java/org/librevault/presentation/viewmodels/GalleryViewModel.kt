@@ -3,19 +3,25 @@ package org.librevault.presentation.viewmodels
 import android.app.Application
 import android.util.Log
 import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import org.librevault.common.state.SelectState
 import org.librevault.common.state.UiState
 import org.librevault.common.vault_consts.VaultDirs
+import org.librevault.domain.model.gallery.MediaId
 import org.librevault.domain.model.vault.FolderName
 import org.librevault.domain.use_case_bundle.GalleryUseCases
 import org.librevault.presentation.activities.preview.PreviewActivity
 import org.librevault.presentation.aliases.DeleteSelectionState
 import org.librevault.presentation.aliases.EncryptListState
-import org.librevault.presentation.aliases.MutableDeleteSelectionList
-import org.librevault.presentation.aliases.ThumbnailInfoListState
-import org.librevault.presentation.aliases.ThumbnailsListState
+import org.librevault.presentation.aliases.MediaThumbnail
 import org.librevault.presentation.events.GalleryEvent
 import java.io.File
 
@@ -28,45 +34,50 @@ class GalleryViewModel(
     private val _folderNameState = MutableStateFlow(FolderName.IMAGES)
     val folderNameState: StateFlow<FolderName> = _folderNameState
 
-    private val _thumbnailsState = MutableStateFlow<ThumbnailsListState>(UiState.Idle)
-    val thumbnailsState: StateFlow<ThumbnailsListState> = _thumbnailsState
-
     private val _encryptState = MutableStateFlow<EncryptListState>(UiState.Idle)
     val encryptState: StateFlow<EncryptListState> = _encryptState
 
     private val _selectFiles = MutableStateFlow(false)
     val selectFiles: StateFlow<Boolean> = _selectFiles
 
-    private val _deleteFilesSelectionState = MutableStateFlow<DeleteSelectionState>(SelectState.Idle)
+    private val _deleteFilesSelectionState =
+        MutableStateFlow<DeleteSelectionState>(SelectState.Idle)
     val deleteFilesSelectionState: StateFlow<DeleteSelectionState> = _deleteFilesSelectionState
 
-    private val _deleteFilesSelection =
-        MutableStateFlow<MutableDeleteSelectionList>(mutableListOf())
-    val deleteFilesSelection: MutableStateFlow<MutableDeleteSelectionList> = _deleteFilesSelection
+    private val _allFolderNamesState = MutableStateFlow<List<FolderName>>(emptyList())
+    val allFolderNamesState: StateFlow<List<FolderName>> = _allFolderNamesState
 
-    private val _deleteSelectedFiles = MutableStateFlow(false)
-    val deleteSelectedFiles: StateFlow<Boolean> = _deleteSelectedFiles
+    private val _allFolderThumbsState =
+        MutableStateFlow<Map<FolderName, List<MediaThumbnail>>>(mapOf())
 
-    private val _thumbnailInfoListState = MutableStateFlow<ThumbnailInfoListState>(UiState.Idle)
-    val thumbnailInfoListState: StateFlow<ThumbnailInfoListState> = _thumbnailInfoListState
+
+    private val _currentFolderThumbsState =
+        MutableStateFlow<UiState<List<MediaThumbnail>>>(UiState.Idle)
+
+    val currentFolderThumbsState: StateFlow<UiState<List<MediaThumbnail>>> =
+        _currentFolderThumbsState
+
 
     init {
         VaultDirs.initVaultDirs()
+        _folderNameState
+            .onEach { _ ->
+                loadThumbnails(emptyList())
+            }
+            .launchIn(viewModelScope)
     }
 
     fun onEvent(galleryEvent: GalleryEvent) = when (galleryEvent) {
         is GalleryEvent.LoadFolder -> loadFolder(galleryEvent.folderName)
 
-        GalleryEvent.ClearGallery -> clearGallery()
         GalleryEvent.SelectFiles -> selectFiles()
         GalleryEvent.UnselectFiles -> unselectFiles()
 
         is GalleryEvent.EncryptFiles -> encryptFiles(galleryEvent.files)
-        is GalleryEvent.LoadMediaInfos -> loadMediaInfos(galleryEvent.ids)
+
         is GalleryEvent.PreviewMedia -> previewMedia(galleryEvent.id)
 
-        is GalleryEvent.LoadThumbnails -> loadThumbnails(galleryEvent.ids)
-        GalleryEvent.RefreshGallery -> refreshGallery()
+        is GalleryEvent.LoadThumbnails -> loadThumbnails(galleryEvent.ids, galleryEvent.forceRefresh)
 
         is GalleryEvent.SetDeleteSelection -> setDeleteSelection(galleryEvent.id)
         GalleryEvent.ConfirmDeleteSelection -> confirmDeleteSelection()
@@ -79,8 +90,84 @@ class GalleryViewModel(
         _folderNameState.value = folderName
     }
 
-    private fun clearGallery() {
-        TODO("I don't know what to do here yet.")
+    private fun loadThumbnails(mediaIds: List<MediaId>, refresh: Boolean = false) {
+        val ids = mediaIds.map { it.value }
+        _currentFolderThumbsState.value = UiState.Loading
+        Log.d(TAG, "loadThumbnails: Loading thumbnails")
+
+        viewModelScope.launch(Dispatchers.IO + SupervisorJob()) {
+
+            val currentFolder = _folderNameState.value
+
+            if (ids.isEmpty() && !refresh) {
+                // Use cached data if available
+                val cached = _allFolderThumbsState.value
+                if (cached.containsKey(currentFolder)) {
+                    _currentFolderThumbsState.value =
+                        UiState.Success(cached[currentFolder].orEmpty())
+                    return@launch
+                }
+            }
+
+            val mediaInfos = try {
+                galleryUseCases.getAllMediaInfo()
+            } catch (e: Exception) {
+                _currentFolderThumbsState.value = UiState.Error(e)
+                Log.e(TAG, "loadThumbnails: Error loading media info", e)
+                return@launch
+            }
+
+            val mediaThumbs = try {
+                if (ids.isEmpty()) {
+                    galleryUseCases.getAllThumbnails()
+                } else {
+                    galleryUseCases.getAllThumbnailsById(ids)
+                }
+            } catch (e: Exception) {
+                _currentFolderThumbsState.value = UiState.Error(e)
+                return@launch
+            }
+
+            val mediaFolders = mediaInfos
+                .flatMap { info -> info.folders.map { folder -> folder to info.id } }
+                .groupBy({ it.first }, { it.second })
+
+            val mediaInfoMap = mediaInfos.associateBy { it.id }
+
+            val folderMediaIds = mediaFolders[currentFolder].orEmpty()
+
+            val mediaThumbnails = mediaThumbs.getOrDefault(emptyList()).mapNotNull { thumb ->
+                val info = mediaInfoMap[thumb.id] ?: return@mapNotNull null
+                if (thumb.id !in folderMediaIds) return@mapNotNull null
+                MediaThumbnail(info, thumb.data)
+            }
+
+            // Merge into existing map
+            val existingThumbs =
+                _allFolderThumbsState.value[currentFolder].orEmpty()
+
+            val mergedThumbs =
+                (existingThumbs + mediaThumbnails)
+                    .associateBy { it.info.id }   // or thumb.id if exposed
+                    .values
+                    .toList()
+            val updatedMap =
+                _allFolderThumbsState.value + (currentFolder to mergedThumbs)
+
+            withContext(Dispatchers.Main) {
+                _allFolderNamesState.value = mediaFolders
+                    .map { it.key }
+                    .sortedBy { name ->
+                        when (name) {
+                            FolderName.IMAGES -> 0
+                            FolderName.VIDEOS -> 1
+                            else -> 2
+                        }
+                    }
+                _allFolderThumbsState.value = updatedMap
+                _currentFolderThumbsState.value = UiState.Success(mergedThumbs)
+            }
+        }
     }
 
     private fun selectFiles() {
@@ -140,82 +227,6 @@ class GalleryViewModel(
         }
     }
 
-    private fun loadThumbnails(ids: List<String>) {
-        val currentThumbnails = when (val currentState = _thumbnailsState.value) {
-            is UiState.Success -> currentState.data
-            else -> emptyList()
-        }
-
-        _thumbnailsState.value = UiState.Loading
-        Log.d(TAG, "loadThumbnails: Loading thumbnails")
-
-        if (ids.isNotEmpty()) {
-            galleryUseCases.getAllThumbnailsById(
-                ids = ids,
-                onThumbsDecrypted = { newThumbnails ->
-                    // Append new thumbnails
-                    val updatedThumbnails = currentThumbnails + newThumbnails
-                    _thumbnailsState.value = UiState.Success(updatedThumbnails)
-                    Log.d(
-                        TAG,
-                        "loadThumbnails: Thumbs decrypted: ${newThumbnails.joinToString { it.id }}"
-                    )
-                },
-                onError = {
-                    _thumbnailsState.value = UiState.Error(it)
-                    Log.e(TAG, "loadThumbnails: Error loading thumbnails", it)
-                }
-            )
-        } else {
-            galleryUseCases.getAllThumbnails(
-                onThumbsDecrypted = { value ->
-                    Log.d(TAG, "loadThumbnails: Thumbs decrypted: ${value.size}")
-                    _thumbnailsState.value = UiState.Success(value)
-                },
-                onError = {
-                    Log.e(TAG, "loadThumbnails: Error loading thumbnails", it)
-                    _thumbnailsState.value = UiState.Error(it)
-                }
-            )
-        }
-    }
-
-    private fun loadMediaInfos(ids: List<String>) {
-        val currentInfos = when (val currentState = _thumbnailInfoListState.value) {
-            is UiState.Success -> currentState.data
-            else -> emptyList()
-        }
-
-        _thumbnailInfoListState.value = UiState.Loading
-        Log.d(TAG, "loadMediaInfos: Loading info")
-
-        if (ids.isNotEmpty()) {
-            galleryUseCases.getMediaInfoByIds(
-                ids = ids,
-                onSuccess = {
-                    Log.d(TAG, "loadMediaInfos: Infos decrypted: ${it.joinToString()}")
-                    val updatedInfos = currentInfos + it
-                    _thumbnailInfoListState.value = UiState.Success(updatedInfos)
-                },
-                onError = {
-                    Log.e(TAG, "loadMediaInfos: Error decrypting info", it)
-                    _thumbnailInfoListState.value = UiState.Error(it)
-                }
-            )
-        } else {
-            galleryUseCases.getAllMediaInfo(
-                onSuccess = {
-                    Log.d(TAG, "loadMediaInfos: Info decrypted: ${it.size}")
-                    _thumbnailInfoListState.value = UiState.Success(it)
-                },
-                onError = {
-                    Log.e(TAG, "loadMediaInfos: Error decrypting info", it)
-                    _thumbnailInfoListState.value = UiState.Error(it)
-                }
-            )
-        }
-    }
-
     private fun previewMedia(mediaId: String) {
         Log.d(TAG, "previewMedia: Previewing media: $mediaId")
         PreviewActivity.startIntent(
@@ -224,7 +235,4 @@ class GalleryViewModel(
         )
     }
 
-    private fun refreshGallery() {
-
-    }
 }

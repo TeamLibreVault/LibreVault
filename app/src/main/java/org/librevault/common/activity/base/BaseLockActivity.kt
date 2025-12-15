@@ -18,6 +18,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import org.librevault.BuildConfig
 import org.librevault.R
 
 abstract class BaseLockActivity : AppCompatActivity() {
@@ -26,7 +27,7 @@ abstract class BaseLockActivity : AppCompatActivity() {
 
     protected abstract val autoLockEnabled: Boolean
     protected abstract val autoLockTimeout: Long
-    protected open val lockOnCreateEnabled: Boolean = true
+    protected open val lockOnCreateEnabled: Boolean = BuildConfig.DEBUG.not()
 
     private val lockRunnable = Runnable { lockApp() }
 

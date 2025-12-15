@@ -30,6 +30,8 @@ import org.librevault.presentation.aliases.DeleteSelection
 fun GalleryTopBar(
     deleteSelections: Set<DeleteSelection>,
     drawerState: DrawerState,
+    onSelectAllClicked: () -> Unit,
+    onDeselectAllClicked: () -> Unit,
     onDeleteSelected: () -> Unit
 ) {
     val coroutineScope = rememberCoroutineScope()
@@ -100,11 +102,31 @@ fun GalleryTopBar(
                 enter = fadeIn() + scaleIn(),
                 exit = scaleOut() + fadeOut()
             ) {
-                IconButton(onClick = onDeleteSelected) {
-                    Icon(
-                        painter = painterResource(id = R.drawable.baseline_delete_24),
-                        contentDescription = stringResource(id = R.string.delete)
-                    )
+                Row {
+                    IconButton(onClick = onDeleteSelected) {
+                        Icon(
+                            painter = painterResource(id = R.drawable.baseline_delete_24),
+                            contentDescription = stringResource(id = R.string.delete)
+                        )
+                    }
+
+                    IconButton(
+                        onClick = onSelectAllClicked
+                    ) {
+                        Icon(
+                            painter = painterResource(id = R.drawable.baseline_select_all_24),
+                            contentDescription = stringResource(id = R.string.select_all)
+                        )
+                    }
+
+                    IconButton(
+                        onClick = onDeselectAllClicked
+                    ) {
+                        Icon(
+                            painter = painterResource(id = R.drawable.baseline_deselect_24),
+                            contentDescription = stringResource(id = R.string.deselect_all)
+                        )
+                    }
                 }
             }
         }

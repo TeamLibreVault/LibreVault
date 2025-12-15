@@ -18,16 +18,33 @@ fun DrawerItem(
     selected: Boolean,
     onClick: () -> Unit,
 ) {
+    DrawerItem(
+        modifier = modifier,
+        iconRes = iconRes,
+        label = stringResource(id = labelRes),
+        selected = selected,
+        onClick = onClick
+    )
+}
+
+@Composable
+fun DrawerItem(
+    modifier: Modifier = Modifier,
+    @DrawableRes iconRes: Int,
+    label: String,
+    selected: Boolean,
+    onClick: () -> Unit,
+) {
     NavigationDrawerItem(
         modifier = modifier,
         icon = {
             Icon(
                 painter = painterResource(id = iconRes),
-                contentDescription = stringResource(id = labelRes)
+                contentDescription = label
             )
         },
         label = {
-            Text(text = stringResource(id = labelRes))
+            Text(text = label)
         },
         selected = selected,
         onClick = onClick

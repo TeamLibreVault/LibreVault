@@ -41,4 +41,6 @@
     <string name="cancel">Cancel</string>
     <string name="delete_items">Delete %1$d items</string>
     <string name="items">items</string>
+    <string name="select_all">Select all</string>
+    <string name="deselect_all">Deselect all</string>
 </resources>

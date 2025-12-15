@@ -25,7 +25,10 @@ import org.librevault.presentation.theme.LibreVaultTheme
 import javax.crypto.AEADBadTagException
 
 @Composable
-fun FailureDisplay(modifier: Modifier = Modifier, throwable: Throwable) {
+fun FailureDisplay(
+    modifier: Modifier = Modifier,
+    throwable: Throwable
+) {
     Column(
         modifier = modifier.fillMaxSize(),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -60,7 +63,7 @@ fun FailureDisplay(modifier: Modifier = Modifier, throwable: Throwable) {
                 }
 
                 else -> {
-                    Text(stringResource(R.string.unknown_error))
+                    Text(throwable.message ?: stringResource(R.string.unknown_error))
                 }
             }
         }
@@ -76,8 +79,11 @@ fun FailureDisplay(modifier: Modifier = Modifier, throwable: Throwable) {
 @Composable
 private fun FailureDisplayPreview() {
     LibreVaultTheme(darkTheme = true) {
-        Scaffold {
-            FailureDisplay(throwable = AEADBadTagException("dump"))
+        Scaffold { innerPadding ->
+            FailureDisplay(
+                modifier = Modifier.padding(innerPadding),
+                throwable = Exception("dump")
+            )
         }
     }
 }
