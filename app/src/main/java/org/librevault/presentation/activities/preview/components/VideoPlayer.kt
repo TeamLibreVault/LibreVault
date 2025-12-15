@@ -1,9 +1,13 @@
 package org.librevault.presentation.activities.preview.components
 
-import android.util.Log
 import android.widget.VideoView
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.LocalActivity
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -42,7 +46,8 @@ import java.util.concurrent.TimeUnit
 fun VideoPlayer(
     mediaInfo: MediaInfo,
     byteArray: ByteArray,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onUiVisibilityToggle: () -> Unit
 ) {
     val activity = LocalActivity.currentOrThrow
     val context = LocalContext.current
@@ -52,15 +57,30 @@ fun VideoPlayer(
     var currentPosition by remember { mutableStateOf(0) }
     var duration by remember { mutableStateOf(0) }
 
-    // Create a temp file from byte array
-    LaunchedEffect(key1 = byteArray) {
+    var isControlsVisible by remember { mutableStateOf(true) }
+    var lastInteractionTime by remember { mutableStateOf(System.currentTimeMillis()) }
+
+    // Create temp file
+    LaunchedEffect(byteArray) {
         tempFile =
             File.createTempFile("temp_video", ".${mediaInfo.fileExtension}", context.cacheDir)
                 .apply {
                     deleteOnExit()
                     FileOutputStream(this).use { it.write(byteArray) }
-                    Log.d("VideoPlayer", "Video file created: $absolutePath")
                 }
+    }
+
+    // Auto-hide controls after 3 seconds
+    LaunchedEffect(lastInteractionTime) {
+        while (true) {
+            delay(3000)
+            if (System.currentTimeMillis() - lastInteractionTime >= 3000) {
+                if (isControlsVisible) {
+                    isControlsVisible = false
+                    onUiVisibilityToggle()
+                }
+            }
+        }
     }
 
     BackHandler(tempFile != null) {
@@ -69,7 +89,15 @@ fun VideoPlayer(
         activity.finish()
     }
 
-    Box(modifier = modifier) {
+    Box(
+        modifier = modifier
+            .fillMaxSize()
+            .clickable {
+                isControlsVisible = !isControlsVisible
+                lastInteractionTime = System.currentTimeMillis()
+                onUiVisibilityToggle()
+            }
+    ) {
         tempFile?.let { file ->
             AndroidView(
                 factory = { ctx ->
@@ -88,79 +116,89 @@ fun VideoPlayer(
                 },
                 update = { view ->
                     videoView = view
-                    // Play/pause control
                     if (isPlaying && !view.isPlaying) view.start()
                     if (!isPlaying && view.isPlaying) view.pause()
-
-                    // Update current position
                     currentPosition = view.currentPosition
                 },
                 modifier = Modifier.fillMaxSize()
             )
         }
 
-        // Top Center Play/Pause Button
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(8.dp)
-                .align(Alignment.Center),
-            horizontalArrangement = Arrangement.Center,
-            verticalAlignment = Alignment.CenterVertically
+        // Animated Controls
+        AnimatedVisibility(
+            visible = isControlsVisible,
+            enter = fadeIn(animationSpec = tween(300)),
+            exit = fadeOut(animationSpec = tween(300))
         ) {
-            IconButton(
-                modifier = Modifier.size(48.dp),
-                onClick = { isPlaying = !isPlaying }
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(8.dp),
+                verticalArrangement = Arrangement.SpaceBetween
             ) {
-                val state =
-                    if (isPlaying) R.drawable.baseline_pause_24 to R.string.pause else R.drawable.baseline_play_arrow_24 to R.string.play
-                Icon(
-                    modifier = Modifier.fillMaxSize(),
-                    painter = painterResource(state.first),
-                    contentDescription = stringResource(state.second)
-                )
-            }
-        }
+                // Top Center Play/Pause Button
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f),
+                    horizontalArrangement = Arrangement.Center,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    IconButton(
+                        modifier = Modifier.size(48.dp),
+                        onClick = {
+                            isPlaying = !isPlaying
+                            lastInteractionTime = System.currentTimeMillis()
+                        }
+                    ) {
+                        val state =
+                            if (isPlaying) R.drawable.baseline_pause_24 to R.string.pause
+                            else R.drawable.baseline_play_arrow_24 to R.string.play
+                        Icon(
+                            modifier = Modifier.fillMaxSize(),
+                            painter = painterResource(state.first),
+                            contentDescription = stringResource(state.second)
+                        )
+                    }
+                }
 
-        // Bottom Progress Bar + Time
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .align(Alignment.BottomCenter)
-                .padding(8.dp)
-        ) {
-            Slider(
-                value = if (duration > 0) currentPosition.toFloat() / duration else 0f,
-                onValueChange = { fraction ->
-                    val pos = (fraction * duration).toInt()
-                    videoView?.seekTo(pos)
-                    currentPosition = pos
-                },
-                modifier = Modifier.fillMaxWidth(),
-                colors = androidx.compose.material3.SliderDefaults.colors(
-                    thumbColor = Color.White,
-                    activeTrackColor = Color.White,
-                    inactiveTrackColor = Color.Gray
-                )
-            )
+                // Bottom Slider + Time
+                Column(
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Slider(
+                        value = if (duration > 0) currentPosition.toFloat() / duration else 0f,
+                        onValueChange = { fraction ->
+                            val pos = (fraction * duration).toInt()
+                            videoView?.seekTo(pos)
+                            currentPosition = pos
+                            lastInteractionTime = System.currentTimeMillis()
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = androidx.compose.material3.SliderDefaults.colors(
+                            thumbColor = Color.White,
+                            activeTrackColor = Color.White,
+                            inactiveTrackColor = Color.Gray
+                        )
+                    )
 
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                Text(text = formatMillis(currentPosition), color = Color.White)
-                Text(text = formatMillis(duration), color = Color.White)
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text(text = formatMillis(currentPosition), color = Color.White)
+                        Text(text = formatMillis(duration), color = Color.White)
+                    }
+                }
             }
         }
     }
 
-    // Update current position only while videoView exists and isPlaying is true
-    LaunchedEffect(key1 = videoView, key2 = isPlaying) {
+    // Update position
+    LaunchedEffect(videoView, isPlaying) {
         while (videoView != null && isPlaying) {
             val pos = videoView!!.currentPosition
-            if (pos != currentPosition) { // only update if changed
-                currentPosition = pos
-            }
+            if (pos != currentPosition) currentPosition = pos
             delay(300)
         }
     }

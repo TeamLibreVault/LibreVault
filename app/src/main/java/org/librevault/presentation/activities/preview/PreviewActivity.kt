@@ -228,7 +228,9 @@ class PreviewActivity : BaseLockActivity() {
                     modifier = Modifier
                         .fillMaxSize()
                         .padding(innerPadding)
-                )
+                ) {
+                    isUiVisible = !isUiVisible
+                }
 
                 FileType.ERROR -> ErrorFileType()
             }
