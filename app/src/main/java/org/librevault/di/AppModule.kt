@@ -6,6 +6,7 @@ import org.librevault.data.repository.preferences.SecurityPreferences
 import org.librevault.data.repository.vault.VaultRepositoryImpl
 import org.librevault.data.repository.vault.util.MediaThumbnailer
 import org.librevault.domain.repository.vault.VaultRepository
+import org.librevault.domain.use_case.preferences.security.GetAnonymousMode
 import org.librevault.domain.use_case.preferences.security.GetAutoLockEnabled
 import org.librevault.domain.use_case.preferences.security.GetAutoLockTimeout
 import org.librevault.domain.use_case.vault.AddItems
@@ -28,7 +29,8 @@ val securityModule = module {
     single { SecurityPreferences(get()) }
     single { GetAutoLockEnabled(get()) }
     single { GetAutoLockTimeout(get()) }
-    single { MainUseCases(get(), get()) }
+    single { GetAnonymousMode(get()) }
+    single { MainUseCases(get(), get(), get()) }
 }
 
 // Vault / Repository

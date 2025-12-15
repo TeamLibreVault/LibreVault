@@ -19,9 +19,13 @@ class MainViewModel(
     private var _autoLockTimeout = MutableStateFlow(0L)
     val autoLockTimeout: StateFlow<Long> = _autoLockTimeout
 
+    private val _isAnonymousMode = MutableStateFlow(false)
+    val isAnonymousMode: StateFlow<Boolean> = _isAnonymousMode
+
     init {
         getAutoLockEnabled()
         getAutoLockTimeout()
+        getAnonymousMode()
     }
 
     fun onEvent(event: MainEvent) = when (event) {
@@ -43,6 +47,12 @@ class MainViewModel(
     private fun getAutoLockTimeout() {
         mainUseCases.getAutoLockTimeout { timeout ->
             _autoLockTimeout.value = timeout
+        }
+    }
+
+    private fun getAnonymousMode() {
+        mainUseCases.getAnonymousMode { mode ->
+            _isAnonymousMode.value = mode
         }
     }
 

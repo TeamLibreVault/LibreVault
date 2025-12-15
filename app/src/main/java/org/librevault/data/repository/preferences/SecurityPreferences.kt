@@ -28,7 +28,10 @@ class SecurityPreferences(context: Context) : PreferencesRepository {
     companion object {
         const val AUTO_LOCK_ENABLED_DEFAULT = true
         const val AUTO_LOCK_TIMEOUT_DEFAULT = 60000L
+        const val GET_ANONYMOUS_MODE_DEFAULT = true
+
         val AUTO_LOCK_ENABLED = booleanPreferencesKey("auto_lock_enabled")
         val AUTO_LOCK_TIMEOUT = longPreferencesKey("auto_lock_timeout")
+        val GET_ANONYMOUS_MODE = booleanPreferencesKey("get_anonymous_mode")
     }
 }

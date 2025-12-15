@@ -77,6 +77,9 @@ class PreviewActivity : BaseLockActivity() {
     override val lockOnCreateEnabled: Boolean
         get() = false
 
+    override val isAnonymousMode: Boolean
+        get() = true
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()

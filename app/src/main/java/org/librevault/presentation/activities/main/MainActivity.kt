@@ -23,6 +23,7 @@ class MainActivity : BaseLockActivity() {
 
     override val autoLockEnabled: Boolean by lazy { viewModel.autoLockEnabled.value }
     override val autoLockTimeout: Long by lazy { viewModel.autoLockTimeout.value }
+    override val isAnonymousMode: Boolean by lazy { viewModel.isAnonymousMode.value }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         viewModel.onEvent(MainEvent.InitSplashScreen(this))

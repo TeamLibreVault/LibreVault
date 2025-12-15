@@ -29,6 +29,8 @@ abstract class BaseLockActivity : AppCompatActivity() {
     protected abstract val autoLockTimeout: Long
     protected open val lockOnCreateEnabled: Boolean = BuildConfig.DEBUG.not()
 
+    protected abstract val isAnonymousMode: Boolean
+
     private val lockRunnable = Runnable { lockApp() }
 
     private val executor by lazy { ContextCompat.getMainExecutor(this) }
@@ -37,8 +39,6 @@ abstract class BaseLockActivity : AppCompatActivity() {
         private set
 
     private var isBiometricVisible = false
-
-    private var isAnonymousMode = true
 
     private val lifecycleEventObserver = LifecycleEventObserver { _, event ->
         when (event) {
@@ -83,11 +83,13 @@ abstract class BaseLockActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        // Disable screenshots and screen recordings
-        window.setFlags(
-            WindowManager.LayoutParams.FLAG_SECURE,
-            WindowManager.LayoutParams.FLAG_SECURE
-        )
+        if (isAnonymousMode) {
+            // Disable screenshots and screen recordings
+            window.setFlags(
+                WindowManager.LayoutParams.FLAG_SECURE,
+                WindowManager.LayoutParams.FLAG_SECURE
+            )
+        }
 
         if (lockOnCreateEnabled.not()) {
             isLoggedIn = true
