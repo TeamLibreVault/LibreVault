@@ -9,9 +9,7 @@ import androidx.activity.enableEdgeToEdge
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -40,21 +38,18 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import coil3.compose.rememberAsyncImagePainter
-import coil3.request.CachePolicy
-import coil3.request.ImageRequest
 import com.google.accompanist.systemuicontroller.rememberSystemUiController
-import net.engawapg.lib.zoomable.rememberZoomState
-import net.engawapg.lib.zoomable.zoomable
 import org.koin.androidx.viewmodel.ext.android.viewModel
 import org.librevault.R
 import org.librevault.common.activity.base.BaseLockActivity
 import org.librevault.common.state.UiState
+import org.librevault.domain.model.gallery.FileType
+import org.librevault.presentation.activities.preview.components.VideoPlayer
+import org.librevault.presentation.activities.preview.components.ZoomableImage
 import org.librevault.presentation.aliases.MediaContent
 import org.librevault.presentation.aliases.MediaInfo
 import org.librevault.presentation.events.PreviewEvent
@@ -79,6 +74,11 @@ class PreviewActivity : BaseLockActivity() {
 
     override val isAnonymousMode: Boolean
         get() = true
+
+    override fun getBiometricTitle(): String = getString(R.string.app_name)
+
+    override fun getBiometricSubtitle(): String =
+        getString(R.string.authenticate_to_unlock_the_vault)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -118,13 +118,15 @@ class PreviewActivity : BaseLockActivity() {
 
                 when (val state = mediaContentState) {
                     is UiState.Error -> ErrorLoadingImage(state.throwable)
-                    UiState.Idle -> LoadingImage()
-                    UiState.Loading -> LoadingImage()
-                    is UiState.Success<MediaContent> -> ImagePreview(
-                        mediaInfo = mediaInfo,
-                        mediaContent = state.data,
-                        onBackClick = ::finish
-                    )
+                    UiState.Idle -> LoadingContent()
+                    UiState.Loading -> LoadingContent()
+                    is UiState.Success<MediaContent> -> {
+                        ContentPreview(
+                            mediaInfo = mediaInfo,
+                            mediaContent = state.data,
+                            onBackClick = ::finish
+                        )
+                    }
                 }
 
                 if (errorInfoDialog) ErrorLoadingInfoDialog { viewModel.onEvent(PreviewEvent.HideErrorInfoDialog) }
@@ -132,29 +134,15 @@ class PreviewActivity : BaseLockActivity() {
         }
     }
 
-    override fun getBiometricTitle(): String = getString(R.string.app_name)
-    override fun getBiometricSubtitle(): String =
-        getString(R.string.authenticate_to_unlock_the_vault)
-
     @OptIn(ExperimentalMaterial3Api::class)
     @Suppress("DEPRECATION")
     @Composable
-    private fun ImagePreview(
+    private fun ContentPreview(
         mediaInfo: MediaInfo,
         mediaContent: MediaContent,
         onBackClick: () -> Unit,
     ) {
         val detailsDialog by viewModel.showDetailsDialogState.collectAsState()
-
-        val image = rememberAsyncImagePainter(
-            model = ImageRequest.Builder(this)
-                .data(mediaContent.data)
-                .diskCachePolicy(CachePolicy.DISABLED)
-                .memoryCachePolicy(CachePolicy.DISABLED)
-                .build()
-        )
-        val zoomState = rememberZoomState()
-
         var isUiVisible by remember { mutableStateOf(true) }
 
         // Handles system UI visibility (status + nav bars)
@@ -224,21 +212,25 @@ class PreviewActivity : BaseLockActivity() {
                 }
             }
         ) { innerPadding ->
-            Box(modifier = Modifier.fillMaxSize()) {
-                Image(
+            when (mediaInfo.fileType) {
+                FileType.IMAGE -> ZoomableImage(
+                    mediaContent = mediaContent,
+                    mediaInfo = mediaInfo,
+                    innerPadding = innerPadding
+                ) {
+                    isUiVisible = !isUiVisible
+                }
+
+                FileType.VIDEO -> VideoPlayer(
+                    byteArray = mediaContent.data,
                     modifier = Modifier
                         .fillMaxSize()
-                        .zoomable(zoomState)
                         .padding(innerPadding)
-                        .clickable(
-                            interactionSource = null,
-                            indication = null,
-                            onClick = { isUiVisible = !isUiVisible }
-                        ),
-                    painter = image,
-                    contentDescription = mediaInfo.fileName,
-                    contentScale = ContentScale.Fit
                 )
+
+                FileType.ERROR -> {
+
+                }
             }
         }
 
@@ -296,7 +288,7 @@ class PreviewActivity : BaseLockActivity() {
     }
 
     @Composable
-    private fun LoadingImage(modifier: Modifier = Modifier) {
+    private fun LoadingContent(modifier: Modifier = Modifier) {
         Box(
             modifier = Modifier
                 .background(MaterialTheme.colorScheme.background)

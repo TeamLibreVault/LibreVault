@@ -1,4 +1,3 @@
-
 import kys0ff.buildconfig.dsl.formattedHex
 import kys0ff.buildconfig.dsl.getCommitHash
 import kys0ff.buildconfig.dsl.long
@@ -21,7 +20,7 @@ android {
         minSdk = 24
         targetSdk = 36
         versionCode = 1
-        versionName = "0.1.0-alpha"
+        versionName = "0.1.1-alpha"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
