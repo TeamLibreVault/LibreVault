@@ -73,9 +73,6 @@ class PreviewActivity : BaseLockActivity() {
     override val lockOnCreateEnabled: Boolean
         get() = false
 
-    override val isAnonymousMode: Boolean
-        get() = true
-
     override fun getBiometricTitle(): String = getString(R.string.app_name)
 
     override fun getBiometricSubtitle(): String =

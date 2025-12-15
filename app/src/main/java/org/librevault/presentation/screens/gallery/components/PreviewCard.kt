@@ -45,7 +45,7 @@ fun PreviewCard(
 
     Card(
         border = BorderStroke(
-            width = if (selected) 1.5.dp else 0.dp,
+            width = if (selected) 2.dp else 0.dp,
             color = if (selected) MaterialTheme.colorScheme.primary else Color.Transparent
         ),
         shape = MaterialTheme.shapes.medium
