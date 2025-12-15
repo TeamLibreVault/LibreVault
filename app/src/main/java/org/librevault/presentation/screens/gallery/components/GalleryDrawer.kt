@@ -1,6 +1,7 @@
 package org.librevault.presentation.screens.gallery.components
 
 import android.content.res.Configuration
+import android.util.Log
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -30,6 +31,11 @@ import org.librevault.BuildConfig
 import org.librevault.R
 import org.librevault.domain.model.vault.FolderName
 import org.librevault.presentation.theme.LibreVaultTheme
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
+
+private const val TAG = "GalleryDrawer"
 
 @Composable
 fun GalleryDrawer(
@@ -94,7 +100,8 @@ fun GalleryDrawer(
                 }
 
                 // Dynamic folders
-                items(items = allFolderNames.drop(2)) { folder ->
+                Log.d(TAG, "GalleryDrawer: All folders: $allFolderNames")
+                items(items = allFolderNames.filterNot { it == FolderName.IMAGES || it == FolderName.VIDEOS }) { folder ->
                     DrawerItem(
                         iconRes = R.drawable.baseline_folder_24,
                         label = folder(),
@@ -109,12 +116,22 @@ fun GalleryDrawer(
             }
 
             // Build info
+            val simpleDateFormat = SimpleDateFormat("yyyy/MM/dd HH:mm", Locale.getDefault())
+            val date = Date(BuildConfig.BUILD_TIME)
             Text(
-                text = "Build id: ${BuildConfig.BUILD_ID}",
+                text = stringResource(R.string.build_id, BuildConfig.BUILD_ID),
                 style = MaterialTheme.typography.labelSmall
             )
             Text(
-                text = "Version: ${BuildConfig.VERSION_NAME}, Code: ${BuildConfig.VERSION_CODE}",
+                text = stringResource(R.string.build_time, simpleDateFormat.format(date)),
+                style = MaterialTheme.typography.labelSmall
+            )
+            Text(
+                text = stringResource(
+                    R.string.version,
+                    BuildConfig.VERSION_NAME,
+                    BuildConfig.VERSION_CODE
+                ),
                 style = MaterialTheme.typography.labelSmall
             )
         }
@@ -135,8 +152,8 @@ private fun GalleryDrawerPreview() {
         GalleryDrawer(
             drawerState = drawerState,
             folderName = FolderName.IMAGES,
-            allFolderNames = listOf(FolderName("Family"), FolderName("Work"))
-        ) {
-        }
+            allFolderNames = listOf(FolderName("Family"), FolderName("Work")),
+            onDrawerClick = {}
+        )
     }
 }
