@@ -23,6 +23,8 @@ import androidx.compose.ui.unit.dp
 import coil3.compose.rememberAsyncImagePainter
 import coil3.request.CachePolicy
 import coil3.request.ImageRequest
+import coil3.request.error
+import coil3.request.placeholder
 import org.librevault.R
 import org.librevault.domain.model.gallery.FileType
 import org.librevault.presentation.aliases.ThumbnailInfo
@@ -53,6 +55,8 @@ fun PreviewCard(
                 .data(thumb)
                 .diskCachePolicy(CachePolicy.DISABLED)
                 .memoryCachePolicy(CachePolicy.DISABLED)
+                .placeholder(R.drawable.outline_image_24)
+                .error(R.drawable.outline_broken_image_24)
                 .build()
         )
 
