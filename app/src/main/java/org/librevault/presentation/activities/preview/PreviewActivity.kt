@@ -48,6 +48,7 @@ import org.librevault.R
 import org.librevault.common.activity.base.BaseLockActivity
 import org.librevault.common.state.UiState
 import org.librevault.domain.model.gallery.FileType
+import org.librevault.presentation.activities.preview.components.ErrorFileType
 import org.librevault.presentation.activities.preview.components.VideoPlayer
 import org.librevault.presentation.activities.preview.components.ZoomableImage
 import org.librevault.presentation.aliases.MediaContent
@@ -228,9 +229,7 @@ class PreviewActivity : BaseLockActivity() {
                         .padding(innerPadding)
                 )
 
-                FileType.ERROR -> {
-
-                }
+                FileType.ERROR -> ErrorFileType()
             }
         }
 
