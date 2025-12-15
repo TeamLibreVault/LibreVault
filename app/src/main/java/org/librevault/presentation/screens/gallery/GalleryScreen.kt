@@ -21,7 +21,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
@@ -58,7 +57,6 @@ class GalleryScreen : Screen {
     @Composable
     override fun Content() {
         val viewModel = koinViewModel<GalleryViewModel>()
-        val coroutine = rememberCoroutineScope()
         val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
 
         val allFolderNamesState by viewModel.allFolderNamesState.collectAsState()
@@ -124,7 +122,7 @@ class GalleryScreen : Screen {
                             }
                         },
                         onDeselectAllClicked = {
-                            viewModel.onEvent(GalleryEvent.ClearDeleteSelection)
+                            viewModel.onEvent(GalleryEvent.CancelDeleteSelection)
                         },
                     ) {
                         viewModel.onEvent(GalleryEvent.ConfirmDeleteSelection)
