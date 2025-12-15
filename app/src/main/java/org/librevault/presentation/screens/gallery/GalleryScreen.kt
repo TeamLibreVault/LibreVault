@@ -242,21 +242,6 @@ class GalleryScreen : Screen {
             viewModel.onEvent(GalleryEvent.EncryptFiles(files))
         }
 
-        when (val state = encryptState) {
-            is UiState.Error -> {
-                Log.e(TAG, "Content: Error encrypting files", state.throwable)
-            }
-
-            UiState.Loading -> {
-                Log.d(TAG, "Content: Encrypting files")
-                EncryptingDialog()
-            }
-
-            is UiState.Success<*> -> {
-                Log.d(TAG, "Content: Files encrypted: ${state.data}")
-            }
-
-            else -> {}
-        }
+        if (encryptState is UiState.Loading) EncryptingDialog()
     }
 }
