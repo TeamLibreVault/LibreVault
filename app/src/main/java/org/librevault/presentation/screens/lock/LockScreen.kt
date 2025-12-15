@@ -24,24 +24,24 @@ class LockScreen : Screen {
     override fun Content() {
         Scaffold { innerPadding ->
             Surface(
-                modifier = Modifier.Companion
+                modifier = Modifier
                     .padding(innerPadding)
             ) {
                 Column(
-                    modifier = Modifier.Companion
+                    modifier = Modifier
                         .fillMaxSize()
                         .padding(8.dp),
                     verticalArrangement = Arrangement.Center,
-                    horizontalAlignment = Alignment.Companion.CenterHorizontally
+                    horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     Icon(
-                        modifier = Modifier.Companion.size(48.dp),
+                        modifier = Modifier.size(48.dp),
                         painter = painterResource(id = R.drawable.baseline_lock_24),
                         contentDescription = null
                     )
                     Text(
                         text = "The vault is locked.",
-                        textAlign = TextAlign.Companion.Center,
+                        textAlign = TextAlign.Center,
                         style = MaterialTheme.typography.displayMedium
                     )
                 }
