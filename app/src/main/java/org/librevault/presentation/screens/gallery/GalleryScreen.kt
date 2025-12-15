@@ -179,10 +179,15 @@ class GalleryScreen : Screen {
                         deleteSelections = deleteFilesSelectionState.currentSelection,
                         drawerState = drawerState,
                         onSelectAllClicked = {
-
+                            currentFolderThumbsState.dataOrNull?.forEach { thumb ->
+                                viewModel.onEvent(GalleryEvent.SetDeleteSelection(
+                                    id = MediaId(thumb.info.id),
+                                    autoDeselect = false
+                                ))
+                            }
                         },
                         onDeselectAllClicked = {
-
+                            viewModel.onEvent(GalleryEvent.ClearDeleteSelection)
                         },
                     ) {
                         viewModel.onEvent(GalleryEvent.ConfirmDeleteSelection)
@@ -242,7 +247,7 @@ class GalleryScreen : Screen {
                                                 onLongClick = {
                                                     viewModel.onEvent(
                                                         GalleryEvent.SetDeleteSelection(
-                                                            id = thumbnailInfo.id
+                                                            id = MediaId(thumbnailInfo.id)
                                                         )
                                                     )
                                                 }
@@ -257,7 +262,7 @@ class GalleryScreen : Screen {
                                                     )
                                                     viewModel.onEvent(
                                                         GalleryEvent.SetDeleteSelection(
-                                                            id = thumbnail.info.id
+                                                            id = MediaId(thumbnail.info.id)
                                                         )
                                                     )
 

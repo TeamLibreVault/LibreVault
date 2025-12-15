@@ -77,9 +77,16 @@ class GalleryViewModel(
 
         is GalleryEvent.PreviewMedia -> previewMedia(galleryEvent.id)
 
-        is GalleryEvent.LoadThumbnails -> loadThumbnails(galleryEvent.ids, galleryEvent.forceRefresh)
+        is GalleryEvent.LoadThumbnails -> loadThumbnails(
+            galleryEvent.ids,
+            galleryEvent.forceRefresh
+        )
 
-        is GalleryEvent.SetDeleteSelection -> setDeleteSelection(galleryEvent.id)
+        is GalleryEvent.SetDeleteSelection -> setDeleteSelection(
+            galleryEvent.id,
+            galleryEvent.autoDeselect
+        )
+
         GalleryEvent.ConfirmDeleteSelection -> confirmDeleteSelection()
         is GalleryEvent.DeleteSelectedFiles -> deleteSelectedFiles()
         GalleryEvent.ClearDeleteSelection -> clearDeleteSelection()
@@ -186,14 +193,16 @@ class GalleryViewModel(
         _selectFiles.value = false
     }
 
-    private fun setDeleteSelection(id: String) {
+    private fun setDeleteSelection(id: MediaId, autoDeselect: Boolean) {
         val currentSelection = _deleteFilesSelectionState.value.currentSelection
 
-        val newSelection = if (id in currentSelection) {
-            currentSelection - id
-        } else {
-            currentSelection + id
-        }
+        val newSelection = if (autoDeselect) {
+            if (id.value in currentSelection) {
+                currentSelection - id.value
+            } else {
+                currentSelection + id.value
+            }
+        } else currentSelection + id.value
 
         _deleteFilesSelectionState.value = SelectState.Selecting(newSelection)
     }

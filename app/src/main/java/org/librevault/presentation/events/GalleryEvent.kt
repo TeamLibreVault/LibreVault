@@ -14,7 +14,7 @@ sealed class GalleryEvent {
     object UnselectFiles : GalleryEvent()
     data class EncryptFiles(val files: List<File>) : GalleryEvent()
     data class PreviewMedia(val id: String) : GalleryEvent()
-    data class SetDeleteSelection(val id: String) : GalleryEvent()
+    data class SetDeleteSelection(val id: MediaId, val autoDeselect: Boolean = true) : GalleryEvent()
     data object ConfirmDeleteSelection : GalleryEvent()
     data object DeleteSelectedFiles : GalleryEvent()
     data object ClearDeleteSelection : GalleryEvent()
