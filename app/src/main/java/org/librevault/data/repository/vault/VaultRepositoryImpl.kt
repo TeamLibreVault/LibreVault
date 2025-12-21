@@ -1,5 +1,6 @@
 package org.librevault.data.repository.vault
 
+import android.content.Context
 import android.util.Log
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
@@ -7,9 +8,8 @@ import kotlinx.coroutines.suspendCancellableCoroutine
 import org.librevault.data.encryption.SecureFileCipher
 import org.librevault.data.repository.vault.util.MediaThumbnailer
 import org.librevault.data.util.extensions.getVaultMediaInfo
-import org.librevault.data.util.extensions.toVaultItemContent
 import org.librevault.data.util.vault.getBaseKey
-import org.librevault.domain.model.vault.VaultItemContent
+import org.librevault.domain.model.vault.TempFile
 import org.librevault.domain.model.vault.VaultMediaInfo
 import org.librevault.domain.model.vault.aliases.resolveVaultData
 import org.librevault.domain.model.vault.aliases.resolveVaultFiles
@@ -17,13 +17,16 @@ import org.librevault.domain.model.vault.aliases.resolveVaultFolders
 import org.librevault.domain.model.vault.aliases.resolveVaultInfo
 import org.librevault.domain.model.vault.aliases.resolveVaultThumb
 import org.librevault.domain.model.vault.fromJsonToVaultMediaInfo
+import org.librevault.domain.model.vault.mediaId
 import org.librevault.domain.repository.vault.VaultRepository
+import org.librevault.utils.createTempFile
 import java.io.File
 import kotlin.coroutines.resumeWithException
 
 private const val TAG = "VaultRepositoryImpl"
 
 class VaultRepositoryImpl(
+    private val context: Context,
     private val mediaThumbnailer: MediaThumbnailer,
 ) : VaultRepository {
     override suspend fun addItems(files: List<File>): Result<List<VaultMediaInfo>> = runCatching {
@@ -106,13 +109,13 @@ class VaultRepositoryImpl(
         info
     }
 
-    override fun getAllThumbnails(): Flow<Result<List<VaultItemContent>>> =
+    override fun getAllThumbnails(): Flow<Result<List<TempFile>>> =
         getThumbnailsByIds(emptyList())
 
-    override fun getThumbnailsByIds(ids: List<String>): Flow<Result<List<VaultItemContent>>> =
+    override fun getThumbnailsByIds(ids: List<String>): Flow<Result<List<TempFile>>> =
         flow {
             runCatching {
-                val vaultThumbs = mutableListOf<VaultItemContent>()
+                val vaultThumbs = mutableListOf<TempFile>()
 
                 val vaultThumbFiles =
                     if (ids.isNotEmpty()) resolveVaultFiles().second.filter { it.name in ids } else resolveVaultFiles().second
@@ -122,23 +125,28 @@ class VaultRepositoryImpl(
                 vaultThumbFiles.forEach { thumbFile ->
                     val id = thumbFile.nameWithoutExtension
 
-                    vaultThumbs += SecureFileCipher.decryptToBytes(
+                    val outputFile = context.createTempFile(id)
+                    vaultThumbs += SecureFileCipher.decryptFile(
                         inputFile = resolveVaultThumb(id),
+                        outputFile = outputFile,
                         key = baseKey
-                    ).toVaultItemContent(id)
+                    )
                     Log.d(TAG, "getAllThumbnails: Thumbnail: $id")
+                    Log.d(TAG, "getThumbnailsByIds: Output file: $outputFile")
+                    Log.d(TAG, "getThumbnailsByIds: Output file id: ${outputFile.mediaId()}")
                 }
                 baseKey.fill(0)
                 emit(Result.success(vaultThumbs))
             }.onFailure { emit(Result.failure(it)) }
         }
 
-    override suspend fun getMediaContentById(id: String): Result<VaultItemContent> = runCatching {
+    override suspend fun getMediaContentById(id: String): Result<TempFile> = runCatching {
         val baseKey = getBaseKey()
-        val decryptedContent = SecureFileCipher.decryptToBytes(
+        val decryptedContent = SecureFileCipher.decryptFile(
             inputFile = resolveVaultData(id),
+            outputFile = context.createTempFile(id),
             key = baseKey
-        ).toVaultItemContent(id)
+        )
         baseKey.fill(0)
         decryptedContent
     }

@@ -1,7 +1,7 @@
 package org.librevault.domain.use_case.vault
 
 import kotlinx.coroutines.launch
-import org.librevault.domain.model.vault.VaultItemContent
+import org.librevault.domain.model.vault.TempFile
 import org.librevault.domain.repository.vault.VaultRepository
 import org.librevault.domain.use_case.utils.getUseCaseScope
 
@@ -13,7 +13,7 @@ class DecryptMediaById(
     operator fun invoke(
         id: String,
         onFailure: (Throwable) -> Unit,
-        onSuccess: (VaultItemContent) -> Unit,
+        onSuccess: (TempFile) -> Unit,
     ) {
         scope.launch {
             vaultRepository.getMediaContentById(id)

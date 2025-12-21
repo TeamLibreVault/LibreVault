@@ -36,7 +36,7 @@ val securityModule = module {
 // Vault / Repository
 val vaultModule = module {
     single { MediaThumbnailer() }
-    single<VaultRepository> { VaultRepositoryImpl(get()) }
+    single<VaultRepository> { VaultRepositoryImpl(get(), get()) }
 
     single { AddItems(get()) }
     single { GetAllThumbnails(get()) }

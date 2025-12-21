@@ -1,12 +1,12 @@
 package org.librevault.presentation.events
 
-import org.librevault.presentation.aliases.MediaContent
+import org.librevault.domain.model.vault.TempFile
 import org.librevault.presentation.aliases.MediaInfo
 
 sealed class PreviewEvent {
     data class RestoreImage(
         val mediaInfo: MediaInfo,
-        val mediaContent: MediaContent,
+        val mediaContent: TempFile,
     ) : PreviewEvent()
 
     data class LoadMediaInfo(val id: String?) : PreviewEvent()

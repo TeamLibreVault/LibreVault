@@ -26,22 +26,22 @@ import coil3.request.ImageRequest
 import coil3.request.error
 import coil3.request.placeholder
 import org.librevault.R
-import org.librevault.domain.model.gallery.FileType
-import org.librevault.presentation.aliases.ThumbnailInfo
+import org.librevault.domain.model.vault.TempFile
+import org.librevault.domain.model.vault.mediaId
 
 private const val TAG = "PreviewCard"
 
 @Composable
 fun PreviewCard(
     context: Context,
-    thumb: ByteArray,
-    info: ThumbnailInfo,
+    isVideo: Boolean,
+    thumb: TempFile,
     selected: Boolean,
     modifier: Modifier = Modifier,
     onLongClick: () -> Unit = {},
     onClick: () -> Unit,
 ) {
-    Log.d(TAG, "PreviewCard: $info")
+    Log.d(TAG, "PreviewCard: ${thumb.mediaId}")
 
     Card(
         border = BorderStroke(
@@ -63,7 +63,7 @@ fun PreviewCard(
         Box {
             Image(
                 painter = painter,
-                contentDescription = info.fileName,
+                contentDescription = thumb.mediaId(),
                 contentScale = ContentScale.Crop,
                 modifier = modifier
                     .aspectRatio(1f)
@@ -74,7 +74,7 @@ fun PreviewCard(
                     )
             )
 
-            if (info.fileType == FileType.VIDEO) {
+            if (isVideo) {
                 Image(
                     modifier = Modifier
                         .size(76.dp)

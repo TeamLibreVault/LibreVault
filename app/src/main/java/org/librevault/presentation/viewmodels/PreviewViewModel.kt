@@ -5,8 +5,8 @@ import androidx.lifecycle.ViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import org.librevault.common.state.UiState
+import org.librevault.domain.model.vault.TempFile
 import org.librevault.domain.use_case_bundle.PreviewUseCases
-import org.librevault.presentation.aliases.MediaContent
 import org.librevault.presentation.aliases.MediaContentState
 import org.librevault.presentation.aliases.MediaInfo
 import org.librevault.presentation.aliases.MediaInfoState
@@ -40,9 +40,9 @@ class PreviewViewModel(
         is PreviewEvent.ShowErrorInfoDialog -> showErrorInfoDialog()
     }
 
-    private fun restoreImage(mediaInfo: MediaInfo, mediaContent: MediaContent) {
+    private fun restoreImage(mediaInfo: MediaInfo, mediaContent: TempFile) {
         val originalFile = File(mediaInfo.filePath)
-        originalFile.writeBytes(mediaContent.data)
+        mediaContent.copyTo(originalFile)
     }
 
     private fun loadMediaInfo(id: String?) {

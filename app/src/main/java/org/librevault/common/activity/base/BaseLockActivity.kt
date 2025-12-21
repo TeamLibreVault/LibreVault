@@ -25,7 +25,7 @@ abstract class BaseLockActivity : AppCompatActivity() {
 
     private val handler = Handler(Looper.getMainLooper())
 
-    protected abstract val autoLockEnabled: Boolean
+    protected open val autoLockEnabled: Boolean = true
     protected abstract val autoLockTimeout: Long
     protected open val lockOnCreateEnabled: Boolean = BuildConfig.DEBUG.not()
 
@@ -41,16 +41,20 @@ abstract class BaseLockActivity : AppCompatActivity() {
     private var isBiometricVisible = false
 
     private val lifecycleEventObserver = LifecycleEventObserver { _, event ->
+        if (!autoLockEnabled) return@LifecycleEventObserver
+
         when (event) {
-            Lifecycle.Event.ON_STOP -> handler.postDelayed(lockRunnable, autoLockTimeout)
+            Lifecycle.Event.ON_STOP -> {
+                handler.postDelayed(lockRunnable, autoLockTimeout)
+            }
             Lifecycle.Event.ON_START -> {
                 handler.removeCallbacks(lockRunnable)
                 tryShowBiometric()
             }
-
-            else -> {}
+            else -> Unit
         }
     }
+
 
     private val biometricPrompt by lazy {
         BiometricPrompt(this, executor, object : BiometricPrompt.AuthenticationCallback() {

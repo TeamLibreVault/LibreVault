@@ -9,3 +9,5 @@ value class FolderName(private val name: String) {
         val VIDEOS = FolderName("Videos")
     }
 }
+
+fun String.toFolderName() = FolderName(this)

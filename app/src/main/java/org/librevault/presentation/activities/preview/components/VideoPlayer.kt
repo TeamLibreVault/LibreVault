@@ -1,8 +1,6 @@
 package org.librevault.presentation.activities.preview.components
 
 import android.widget.VideoView
-import androidx.activity.compose.BackHandler
-import androidx.activity.compose.LocalActivity
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
@@ -22,100 +20,125 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
-import cafe.adriel.voyager.navigator.currentOrThrow
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import kotlinx.coroutines.delay
 import org.librevault.R
+import org.librevault.domain.model.vault.TempFile
 import org.librevault.presentation.aliases.MediaInfo
-import java.io.File
-import java.io.FileOutputStream
 import java.util.concurrent.TimeUnit
 
 @Composable
 fun VideoPlayer(
     mediaInfo: MediaInfo,
-    byteArray: ByteArray,
+    tempFile: TempFile,
     modifier: Modifier = Modifier,
     onUiVisibilityToggle: () -> Unit
 ) {
-    val activity = LocalActivity.currentOrThrow
-    val context = LocalContext.current
+    val lifecycleOwner = LocalLifecycleOwner.current
+    val onUiToggle by rememberUpdatedState(onUiVisibilityToggle)
+
     var isPlaying by remember { mutableStateOf(true) }
-    var tempFile: File? by remember { mutableStateOf(null) }
-    var videoView by remember { mutableStateOf<VideoView?>(null) }
-    var currentPosition by remember { mutableStateOf(0) }
-    var duration by remember { mutableStateOf(0) }
-
     var isControlsVisible by remember { mutableStateOf(true) }
-    var lastInteractionTime by remember { mutableStateOf(System.currentTimeMillis()) }
 
-    // Create temp file
-    LaunchedEffect(byteArray) {
-        tempFile =
-            File.createTempFile("temp_video", ".${mediaInfo.fileExtension}", context.cacheDir)
-                .apply {
-                    deleteOnExit()
-                    FileOutputStream(this).use { it.write(byteArray) }
-                }
-    }
+    var videoView by remember { mutableStateOf<VideoView?>(null) }
+    var currentPosition by remember { mutableIntStateOf(0) }
+    var duration by remember { mutableIntStateOf(0) }
 
-    // Auto-hide controls after 3 seconds
-    LaunchedEffect(lastInteractionTime) {
-        while (true) {
-            delay(3000)
-            if (System.currentTimeMillis() - lastInteractionTime >= 3000) {
-                if (isControlsVisible) {
-                    isControlsVisible = false
-                    onUiVisibilityToggle()
+    /* ---------------- Temp file ---------------- */
+
+    DisposableEffect(key1 = lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            when (event) {
+                Lifecycle.Event.ON_STOP -> {
+                    isPlaying = false
+                    videoView?.pause()
                 }
+                Lifecycle.Event.ON_DESTROY -> {
+                    videoView?.stopPlayback()
+                }
+                else -> Unit
             }
         }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
 
-    BackHandler(tempFile != null) {
-        tempFile?.delete()
-        tempFile = null
-        activity.finish()
+    /* ---------------- Lifecycle ---------------- */
+
+    DisposableEffect(key1 = lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            when (event) {
+                Lifecycle.Event.ON_PAUSE -> {
+                    videoView?.pause()
+                }
+                Lifecycle.Event.ON_RESUME -> {
+                    if (isPlaying) videoView?.start()
+                }
+                Lifecycle.Event.ON_DESTROY -> {
+                    videoView?.stopPlayback()
+                }
+                else -> Unit
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
+
+    /* ---------------- Auto-hide controls ---------------- */
+
+    LaunchedEffect(key1 = isControlsVisible) {
+        if (isControlsVisible) {
+            delay(3_000)
+            isControlsVisible = false
+            onUiToggle()
+        }
     }
 
     Box(
         modifier = modifier
             .fillMaxSize()
             .clickable(
-                interactionSource = MutableInteractionSource(),
-                indication = null,
-                onClick = {
-                    isControlsVisible = !isControlsVisible
-                    lastInteractionTime = System.currentTimeMillis()
-                    onUiVisibilityToggle()
-                }
-            )
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null
+            ) {
+                isControlsVisible = !isControlsVisible
+                onUiToggle()
+            }
     ) {
-        tempFile?.let { file ->
+
+        /* ---------------- Video ---------------- */
+
+        tempFile.let { file ->
             AndroidView(
-                factory = { ctx ->
-                    VideoView(ctx).apply {
+                factory = {
+                    VideoView(it).apply {
                         setVideoPath(file.absolutePath)
+
                         setOnPreparedListener { player ->
-                            start()
-                            isPlaying = true
                             duration = player.duration
+                            start()
                         }
+
                         setOnCompletionListener {
                             isPlaying = false
                         }
+
                         videoView = this
                     }
                 },
@@ -129,11 +152,12 @@ fun VideoPlayer(
             )
         }
 
-        // Animated Controls
+        /* ---------------- Controls ---------------- */
+
         AnimatedVisibility(
             visible = isControlsVisible,
-            enter = fadeIn(animationSpec = tween(300)),
-            exit = fadeOut(animationSpec = tween(300))
+            enter = fadeIn(tween(300)),
+            exit = fadeOut(tween(300))
         ) {
             Column(
                 modifier = Modifier
@@ -141,7 +165,7 @@ fun VideoPlayer(
                     .padding(8.dp),
                 verticalArrangement = Arrangement.SpaceBetween
             ) {
-                // Top Center Play/Pause Button
+
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -151,59 +175,51 @@ fun VideoPlayer(
                 ) {
                     IconButton(
                         modifier = Modifier.size(48.dp),
-                        onClick = {
-                            isPlaying = !isPlaying
-                            lastInteractionTime = System.currentTimeMillis()
-                        }
+                        onClick = { isPlaying = !isPlaying }
                     ) {
-                        val state =
-                            if (isPlaying) R.drawable.baseline_pause_24 to R.string.pause
-                            else R.drawable.baseline_play_arrow_24 to R.string.play
                         Icon(
                             modifier = Modifier.fillMaxSize(),
-                            painter = painterResource(state.first),
-                            contentDescription = stringResource(state.second)
+                            painter = painterResource(
+                                if (isPlaying)
+                                    R.drawable.baseline_pause_24
+                                else
+                                    R.drawable.baseline_play_arrow_24
+                            ),
+                            contentDescription = null
                         )
                     }
                 }
 
-                // Bottom Slider + Time
-                Column(
-                    modifier = Modifier.fillMaxWidth()
-                ) {
+                Column {
                     Slider(
-                        value = if (duration > 0) currentPosition.toFloat() / duration else 0f,
-                        onValueChange = { fraction ->
-                            val pos = (fraction * duration).toInt()
+                        value = if (duration > 0)
+                            currentPosition.toFloat() / duration
+                        else 0f,
+                        onValueChange = {
+                            val pos = (it * duration).toInt()
                             videoView?.seekTo(pos)
                             currentPosition = pos
-                            lastInteractionTime = System.currentTimeMillis()
                         },
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = androidx.compose.material3.SliderDefaults.colors(
-                            thumbColor = Color.White,
-                            activeTrackColor = Color.White,
-                            inactiveTrackColor = Color.Gray
-                        )
+                        modifier = Modifier.fillMaxWidth()
                     )
 
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
-                        Text(text = formatMillis(currentPosition), color = Color.White)
-                        Text(text = formatMillis(duration), color = Color.White)
+                        Text(formatMillis(currentPosition), color = Color.White)
+                        Text(formatMillis(duration), color = Color.White)
                     }
                 }
             }
         }
     }
 
-    // Update position
-    LaunchedEffect(videoView, isPlaying) {
-        while (videoView != null && isPlaying) {
-            val pos = videoView!!.currentPosition
-            if (pos != currentPosition) currentPosition = pos
+    /* ---------------- Progress updates ---------------- */
+
+    LaunchedEffect(isPlaying, videoView) {
+        while (isPlaying && videoView != null) {
+            currentPosition = videoView!!.currentPosition
             delay(300)
         }
     }

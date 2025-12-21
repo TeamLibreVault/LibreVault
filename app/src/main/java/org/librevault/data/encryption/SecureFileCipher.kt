@@ -182,8 +182,9 @@ object SecureFileCipher {
         key: ByteArray,
         onProgress: (Float) -> Unit = {},
         onComplete: () -> Unit = {}
-    ) {
-        val totalCiphertextBytes = (inputFile.length() - SALT_SIZE - IV_SIZE).toFloat().coerceAtLeast(1f)
+    ): File {
+        val totalCiphertextBytes =
+            (inputFile.length() - SALT_SIZE - IV_SIZE).toFloat().coerceAtLeast(1f)
         var processedBytes = 0L
         var lastReportedProgress = 0f
 
@@ -191,25 +192,33 @@ object SecureFileCipher {
             BufferedInputStream(fis, BUFFER_SIZE).use { bufferedIn ->
                 // read salt and iv
                 val salt = ByteArray(SALT_SIZE)
-                if (bufferedIn.read(salt) != SALT_SIZE) throw IllegalStateException("Unable to read salt")
+                if (bufferedIn.read(salt) != SALT_SIZE)
+                    throw IllegalStateException("Unable to read salt")
 
                 val iv = ByteArray(IV_SIZE)
-                if (bufferedIn.read(iv) != IV_SIZE) throw IllegalStateException("Unable to read IV")
+                if (bufferedIn.read(iv) != IV_SIZE)
+                    throw IllegalStateException("Unable to read IV")
 
                 val derivedKey = deriveKeyFromPassword(passwordBytes = key, salt = salt)
                 val cipher = Cipher.getInstance(AES_MODE)
-                cipher.init(Cipher.DECRYPT_MODE, derivedKey, GCMParameterSpec(GCM_TAG_LENGTH, iv))
+                cipher.init(
+                    Cipher.DECRYPT_MODE,
+                    derivedKey,
+                    GCMParameterSpec(GCM_TAG_LENGTH, iv)
+                )
 
                 FileOutputStream(outputFile).use { fos ->
                     BufferedOutputStream(fos, BUFFER_SIZE).use { bufferedOut ->
                         val buffer = ByteArray(BUFFER_SIZE)
                         var bytesRead: Int
+
                         while (bufferedIn.read(buffer).also { bytesRead = it } != -1) {
                             val decrypted = cipher.update(buffer, 0, bytesRead)
                             if (decrypted != null) {
                                 bufferedOut.write(decrypted)
                             }
-                            processedBytes += bytesRead.toLong()
+
+                            processedBytes += bytesRead
                             val progress = processedBytes.toFloat() / totalCiphertextBytes
                             if (progress - lastReportedProgress >= 0.01f || progress == 1f) {
                                 lastReportedProgress = progress
@@ -217,7 +226,7 @@ object SecureFileCipher {
                             }
                         }
 
-                        // finalize - will throw AEADBadTagException if tag doesn't validate
+                        // finalize (throws AEADBadTagException if auth fails)
                         val finalBytes = cipher.doFinal()
                         if (finalBytes != null) bufferedOut.write(finalBytes)
                         bufferedOut.flush()
@@ -227,6 +236,7 @@ object SecureFileCipher {
         }
 
         onComplete()
+        return outputFile
     }
 
     fun decryptToBytes(

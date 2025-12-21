@@ -2,7 +2,6 @@ package org.librevault.presentation.activities.preview.components
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
@@ -20,12 +19,12 @@ import coil3.request.placeholder
 import net.engawapg.lib.zoomable.rememberZoomState
 import net.engawapg.lib.zoomable.zoomable
 import org.librevault.R
-import org.librevault.presentation.aliases.MediaContent
+import org.librevault.domain.model.vault.TempFile
 import org.librevault.presentation.aliases.MediaInfo
 
 @Composable
 fun ZoomableImage(
-    mediaContent: MediaContent,
+    mediaContent: TempFile,
     mediaInfo: MediaInfo,
     innerPadding: PaddingValues = PaddingValues(0.dp),
     onUiVisibilityToggle: () -> Unit
@@ -33,7 +32,7 @@ fun ZoomableImage(
     val zoomState = rememberZoomState()
     val image = rememberAsyncImagePainter(
         model = ImageRequest.Builder(LocalContext.current)
-            .data(mediaContent.data)
+            .data(mediaContent)
             .diskCachePolicy(CachePolicy.DISABLED)
             .memoryCachePolicy(CachePolicy.DISABLED)
             .placeholder(R.drawable.outline_image_24)
@@ -48,7 +47,7 @@ fun ZoomableImage(
                 .zoomable(zoomState)
                 .padding(innerPadding)
                 .clickable(
-                    interactionSource = MutableInteractionSource(),
+                    interactionSource = null,
                     indication = null,
                     onClick = onUiVisibilityToggle
                 ),

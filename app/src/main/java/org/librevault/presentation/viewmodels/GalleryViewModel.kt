@@ -5,7 +5,6 @@ import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.launchIn
@@ -17,11 +16,12 @@ import org.librevault.common.state.UiState
 import org.librevault.common.vault_consts.VaultDirs
 import org.librevault.domain.model.gallery.MediaId
 import org.librevault.domain.model.vault.FolderName
+import org.librevault.domain.model.vault.TempFile
+import org.librevault.domain.model.vault.mediaId
 import org.librevault.domain.use_case_bundle.GalleryUseCases
 import org.librevault.presentation.activities.preview.PreviewActivity
 import org.librevault.presentation.aliases.DeleteSelectionState
 import org.librevault.presentation.aliases.EncryptListState
-import org.librevault.presentation.aliases.MediaThumbnail
 import org.librevault.presentation.events.GalleryEvent
 import java.io.File
 
@@ -48,13 +48,15 @@ class GalleryViewModel(
     val allFolderNamesState: StateFlow<List<FolderName>> = _allFolderNamesState
 
     private val _allFolderThumbsState =
-        MutableStateFlow<Map<FolderName, List<MediaThumbnail>>>(mapOf())
+        MutableStateFlow<Map<FolderName, List<TempFile>>>(mapOf())
+    val allFolderThumbsState: StateFlow<Map<FolderName, List<TempFile>>> =
+        _allFolderThumbsState
 
 
     private val _currentFolderThumbsState =
-        MutableStateFlow<UiState<List<MediaThumbnail>>>(UiState.Idle)
+        MutableStateFlow<UiState<List<TempFile>>>(UiState.Idle)
 
-    val currentFolderThumbsState: StateFlow<UiState<List<MediaThumbnail>>> =
+    val currentFolderThumbsState: StateFlow<UiState<List<TempFile>>> =
         _currentFolderThumbsState
 
 
@@ -102,7 +104,7 @@ class GalleryViewModel(
         _currentFolderThumbsState.value = UiState.Loading
         Log.d(TAG, "loadThumbnails: Loading thumbnails")
 
-        viewModelScope.launch(Dispatchers.IO + SupervisorJob()) {
+        viewModelScope.launch(Dispatchers.IO) {
 
             val currentFolder = _folderNameState.value
 
@@ -140,14 +142,12 @@ class GalleryViewModel(
                 .flatMap { info -> info.folders.map { folder -> folder to info.id } }
                 .groupBy({ it.first }, { it.second })
 
-            val mediaInfoMap = mediaInfos.associateBy { it.id }
-
             val folderMediaIds = mediaFolders[currentFolder].orEmpty()
 
             val mediaThumbnails = mediaThumbs.getOrDefault(emptyList()).mapNotNull { thumb ->
-                val info = mediaInfoMap[thumb.id] ?: return@mapNotNull null
-                if (thumb.id !in folderMediaIds) return@mapNotNull null
-                MediaThumbnail(info, thumb.data)
+                val thumbId = thumb.mediaId()
+                if (thumbId !in folderMediaIds) return@mapNotNull null
+                thumb
             }
 
             // Merge into existing map
@@ -162,7 +162,7 @@ class GalleryViewModel(
                 } else {
                     // Merge only when NOT refreshing
                     (existingThumbs + mediaThumbnails)
-                        .associateBy { it.info.id }
+                        .associateBy { it.mediaId }
                         .values
                         .toList()
                 }

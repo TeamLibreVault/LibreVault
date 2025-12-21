@@ -48,10 +48,10 @@ import org.librevault.R
 import org.librevault.common.activity.base.BaseLockActivity
 import org.librevault.common.state.UiState
 import org.librevault.domain.model.gallery.FileType
+import org.librevault.domain.model.vault.TempFile
 import org.librevault.presentation.activities.preview.components.ErrorFileType
 import org.librevault.presentation.activities.preview.components.VideoPlayer
 import org.librevault.presentation.activities.preview.components.ZoomableImage
-import org.librevault.presentation.aliases.MediaContent
 import org.librevault.presentation.aliases.MediaInfo
 import org.librevault.presentation.events.PreviewEvent
 import org.librevault.presentation.theme.LibreVaultTheme
@@ -63,9 +63,6 @@ private const val TAG = "PreviewActivity"
 class PreviewActivity : BaseLockActivity() {
 
     private val viewModel by viewModel<PreviewViewModel>()
-
-    override val autoLockEnabled: Boolean
-        get() = true
 
     override val autoLockTimeout: Long
         get() = 1.minutes.inWholeMilliseconds
@@ -118,7 +115,7 @@ class PreviewActivity : BaseLockActivity() {
                     is UiState.Error -> ErrorLoadingImage(state.throwable)
                     UiState.Idle -> LoadingContent()
                     UiState.Loading -> LoadingContent()
-                    is UiState.Success<MediaContent> -> {
+                    is UiState.Success<TempFile> -> {
                         ContentPreview(
                             mediaInfo = mediaInfo,
                             mediaContent = state.data,
@@ -137,7 +134,7 @@ class PreviewActivity : BaseLockActivity() {
     @Composable
     private fun ContentPreview(
         mediaInfo: MediaInfo,
-        mediaContent: MediaContent,
+        mediaContent: TempFile,
         onBackClick: () -> Unit,
     ) {
         val detailsDialog by viewModel.showDetailsDialogState.collectAsState()
@@ -221,7 +218,7 @@ class PreviewActivity : BaseLockActivity() {
 
                 FileType.VIDEO -> VideoPlayer(
                     mediaInfo = mediaInfo,
-                    byteArray = mediaContent.data,
+                    tempFile = mediaContent,
                     modifier = Modifier
                         .fillMaxSize()
                         .padding(innerPadding)
