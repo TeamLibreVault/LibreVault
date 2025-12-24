@@ -94,7 +94,7 @@ Feedback helps shape LibreVault’s future.
 
 ## 📄 License
 
-Licensed under the **MIT License**.  
+Licensed under the **GNU GPL v3 License**.  
 See the [LICENSE](LICENSE) file for details.
 
 ---
