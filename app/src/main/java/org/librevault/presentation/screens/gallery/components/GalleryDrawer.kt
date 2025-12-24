@@ -130,7 +130,6 @@ fun GalleryDrawer(
                 text = stringResource(
                     R.string.version,
                     BuildConfig.VERSION_NAME,
-                    BuildConfig.VERSION_CODE
                 ),
                 style = MaterialTheme.typography.labelSmall
             )
