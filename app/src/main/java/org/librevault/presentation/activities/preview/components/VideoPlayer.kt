@@ -1,6 +1,7 @@
 package org.librevault.presentation.activities.preview.components
 
-import android.widget.VideoView
+import android.net.Uri
+import androidx.annotation.OptIn
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
@@ -26,87 +27,102 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.media3.common.MediaItem
+import androidx.media3.common.Player
+import androidx.media3.common.util.UnstableApi
+import androidx.media3.exoplayer.DefaultRenderersFactory
+import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.ui.PlayerView
 import kotlinx.coroutines.delay
 import org.librevault.R
 import org.librevault.domain.model.vault.TempFile
-import org.librevault.presentation.aliases.MediaInfo
 import java.util.concurrent.TimeUnit
 
+@OptIn(UnstableApi::class)
 @Composable
 fun VideoPlayer(
-    mediaInfo: MediaInfo,
     tempFile: TempFile,
     modifier: Modifier = Modifier,
     onUiVisibilityToggle: () -> Unit
 ) {
+    val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
-    val onUiToggle by rememberUpdatedState(onUiVisibilityToggle)
 
     var isPlaying by remember { mutableStateOf(true) }
     var isControlsVisible by remember { mutableStateOf(true) }
 
-    var videoView by remember { mutableStateOf<VideoView?>(null) }
     var currentPosition by remember { mutableIntStateOf(0) }
     var duration by remember { mutableIntStateOf(0) }
 
-    /* ---------------- Temp file ---------------- */
+    /* ---------------- ExoPlayer ---------------- */
 
-    DisposableEffect(key1 = lifecycleOwner) {
-        val observer = LifecycleEventObserver { _, event ->
-            when (event) {
-                Lifecycle.Event.ON_STOP -> {
-                    isPlaying = false
-                    videoView?.pause()
-                }
-                Lifecycle.Event.ON_DESTROY -> {
-                    videoView?.stopPlayback()
-                }
-                else -> Unit
-            }
+    val renderersFactory = DefaultRenderersFactory(context)
+        .setExtensionRendererMode(DefaultRenderersFactory.EXTENSION_RENDERER_MODE_ON)
+
+    val exoPlayer = remember {
+        ExoPlayer.Builder(context, renderersFactory).build().apply {
+            val uri = Uri.fromFile(tempFile)
+            setMediaItem(MediaItem.fromUri(uri))
+            prepare()
+            playWhenReady = true
         }
-        lifecycleOwner.lifecycle.addObserver(observer)
-        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
 
     /* ---------------- Lifecycle ---------------- */
 
-    DisposableEffect(key1 = lifecycleOwner) {
+    DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
             when (event) {
-                Lifecycle.Event.ON_PAUSE -> {
-                    videoView?.pause()
-                }
-                Lifecycle.Event.ON_RESUME -> {
-                    if (isPlaying) videoView?.start()
-                }
-                Lifecycle.Event.ON_DESTROY -> {
-                    videoView?.stopPlayback()
-                }
+                Lifecycle.Event.ON_PAUSE -> exoPlayer.pause()
+                Lifecycle.Event.ON_RESUME -> if (isPlaying) exoPlayer.play()
+                Lifecycle.Event.ON_STOP -> exoPlayer.pause()
+                Lifecycle.Event.ON_DESTROY -> exoPlayer.release()
                 else -> Unit
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)
-        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+            exoPlayer.release()
+        }
+    }
+
+    /* ---------------- Player listener ---------------- */
+
+    DisposableEffect(exoPlayer) {
+        val listener = object : Player.Listener {
+            override fun onPlaybackStateChanged(state: Int) {
+                if (state == Player.STATE_READY) {
+                    duration = exoPlayer.duration.toInt()
+                }
+            }
+
+            override fun onIsPlayingChanged(playing: Boolean) {
+                isPlaying = playing
+            }
+        }
+        exoPlayer.addListener(listener)
+        onDispose { exoPlayer.removeListener(listener) }
     }
 
     /* ---------------- Auto-hide controls ---------------- */
 
-    LaunchedEffect(key1 = isControlsVisible) {
+    LaunchedEffect(isControlsVisible) {
         if (isControlsVisible) {
             delay(3_000)
             isControlsVisible = false
-            onUiToggle()
+            onUiVisibilityToggle()
         }
     }
 
@@ -118,39 +134,21 @@ fun VideoPlayer(
                 indication = null
             ) {
                 isControlsVisible = !isControlsVisible
-                onUiToggle()
+                onUiVisibilityToggle()
             }
     ) {
 
         /* ---------------- Video ---------------- */
 
-        tempFile.let { file ->
-            AndroidView(
-                factory = {
-                    VideoView(it).apply {
-                        setVideoPath(file.absolutePath)
-
-                        setOnPreparedListener { player ->
-                            duration = player.duration
-                            start()
-                        }
-
-                        setOnCompletionListener {
-                            isPlaying = false
-                        }
-
-                        videoView = this
-                    }
-                },
-                update = { view ->
-                    videoView = view
-                    if (isPlaying && !view.isPlaying) view.start()
-                    if (!isPlaying && view.isPlaying) view.pause()
-                    currentPosition = view.currentPosition
-                },
-                modifier = Modifier.fillMaxSize()
-            )
-        }
+        AndroidView(
+            factory = { context ->
+                PlayerView(context).apply {
+                    player = exoPlayer
+                    useController = false
+                }
+            },
+            modifier = Modifier.fillMaxSize()
+        )
 
         /* ---------------- Controls ---------------- */
 
@@ -175,7 +173,9 @@ fun VideoPlayer(
                 ) {
                     IconButton(
                         modifier = Modifier.size(48.dp),
-                        onClick = { isPlaying = !isPlaying }
+                        onClick = {
+                            if (isPlaying) exoPlayer.pause() else exoPlayer.play()
+                        }
                     ) {
                         Icon(
                             modifier = Modifier.fillMaxSize(),
@@ -185,7 +185,8 @@ fun VideoPlayer(
                                 else
                                     R.drawable.baseline_play_arrow_24
                             ),
-                            contentDescription = null
+                            contentDescription = null,
+                            tint = Color.White
                         )
                     }
                 }
@@ -196,9 +197,9 @@ fun VideoPlayer(
                             currentPosition.toFloat() / duration
                         else 0f,
                         onValueChange = {
-                            val pos = (it * duration).toInt()
-                            videoView?.seekTo(pos)
-                            currentPosition = pos
+                            val pos = (it * duration).toLong()
+                            exoPlayer.seekTo(pos)
+                            currentPosition = pos.toInt()
                         },
                         modifier = Modifier.fillMaxWidth()
                     )
@@ -217,15 +218,18 @@ fun VideoPlayer(
 
     /* ---------------- Progress updates ---------------- */
 
-    LaunchedEffect(isPlaying, videoView) {
-        while (isPlaying && videoView != null) {
-            currentPosition = videoView!!.currentPosition
-            delay(300)
+    LaunchedEffect(key1 = isPlaying, key2 = isControlsVisible) {
+        if (isPlaying || isControlsVisible) {
+            while (true) {
+                currentPosition = exoPlayer.currentPosition.toInt()
+                delay(500) // 500ms is plenty, we aren't launching a rocket
+            }
         }
     }
 }
 
-// Helper to format milliseconds to mm:ss
+/* ---------------- Utils ---------------- */
+
 private fun formatMillis(millis: Int): String {
     val minutes = TimeUnit.MILLISECONDS.toMinutes(millis.toLong())
     val seconds = TimeUnit.MILLISECONDS.toSeconds(millis.toLong()) % 60

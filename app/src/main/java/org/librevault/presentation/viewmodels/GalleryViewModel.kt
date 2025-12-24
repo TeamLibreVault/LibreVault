@@ -61,7 +61,6 @@ class GalleryViewModel(
 
 
     init {
-        VaultDirs.initVaultDirs()
         _folderNameState
             .onEach { _ ->
                 loadThumbnails(emptyList())

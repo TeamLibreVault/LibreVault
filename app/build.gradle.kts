@@ -89,6 +89,8 @@ dependencies {
     implementation(libs.koin.android)
     implementation(libs.koin.androidx.compose)
     implementation(libs.gson)
+    implementation(libs.androidx.media3.exoplayer)
+    implementation(libs.androidx.media3.ui)
     implementation(libs.androidx.lifecycle.process)
     implementation(libs.androidx.datastore.preferences)
     implementation(libs.androidx.exifinterface)
