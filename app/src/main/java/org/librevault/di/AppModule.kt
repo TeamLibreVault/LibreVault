@@ -64,7 +64,7 @@ val vaultModule = module {
 val viewModelModule = module {
     viewModel { MainViewModel(get()) }
     viewModel { PreviewViewModel(get()) }
-    viewModel { GalleryViewModel(get(), get()) }
+    viewModel { GalleryViewModel(get(), get(), get()) }
 }
 
 // All together

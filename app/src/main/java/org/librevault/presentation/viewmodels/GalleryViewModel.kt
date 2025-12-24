@@ -3,6 +3,7 @@ package org.librevault.presentation.viewmodels
 import android.app.Application
 import android.util.Log
 import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -13,7 +14,6 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.librevault.common.state.SelectState
 import org.librevault.common.state.UiState
-import org.librevault.common.vault_consts.VaultDirs
 import org.librevault.domain.model.gallery.MediaId
 import org.librevault.domain.model.vault.FolderName
 import org.librevault.domain.model.vault.TempFile
@@ -30,8 +30,17 @@ private const val TAG = "GalleryViewModel"
 class GalleryViewModel(
     private val application: Application,
     private val galleryUseCases: GalleryUseCases,
+    private val savedStateHandle: SavedStateHandle
 ) : AndroidViewModel(application) {
-    private val _folderNameState = MutableStateFlow(FolderName.IMAGES)
+
+    companion object {
+        private const val KEY_FOLDER_NAME = "current_folder_name"
+    }
+
+    private val _folderNameState = savedStateHandle.getStateFlow(
+        key = KEY_FOLDER_NAME,
+        initialValue = FolderName.IMAGES
+    )
     val folderNameState: StateFlow<FolderName> = _folderNameState
 
     private val _encryptState = MutableStateFlow<EncryptListState>(UiState.Idle)
@@ -95,7 +104,9 @@ class GalleryViewModel(
     }
 
     private fun loadFolder(folderName: FolderName) {
-        _folderNameState.value = folderName
+        // Updating the savedStateHandle value automatically
+        // updates the flow and prepares for potential death
+        savedStateHandle[KEY_FOLDER_NAME] = folderName
     }
 
     private fun loadThumbnails(mediaIds: List<MediaId>, refresh: Boolean = false) {
