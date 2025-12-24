@@ -40,10 +40,14 @@ class GalleryViewModel(
         private const val KEY_FOLDER_NAME = "current_folder_name"
     }
 
-    private val _folderNameState = savedStateHandle.getStateFlow(KEY_FOLDER_NAME, FolderName.IMAGES())
+    val folderNameState = savedStateHandle
+        .getStateFlow(KEY_FOLDER_NAME, FolderName.IMAGES())
         .map { FolderName(it) }
-        .stateIn(viewModelScope, SharingStarted.Eagerly, FolderName.IMAGES)
-    val folderNameState: StateFlow<FolderName> = _folderNameState
+        .stateIn(
+            viewModelScope,
+            SharingStarted.Eagerly,
+            FolderName.IMAGES
+        )
 
     private val _encryptState = MutableStateFlow<EncryptListState>(UiState.Idle)
     val encryptState: StateFlow<EncryptListState> = _encryptState
@@ -72,7 +76,7 @@ class GalleryViewModel(
 
 
     init {
-        _folderNameState
+        folderNameState
             .onEach { _ ->
                 loadThumbnails(emptyList())
             }
@@ -118,7 +122,7 @@ class GalleryViewModel(
 
         viewModelScope.launch(Dispatchers.IO) {
 
-            val currentFolder = _folderNameState.value
+            val currentFolder = folderNameState.value
 
             if (ids.isEmpty() && !refresh) {
                 Log.d(TAG, "Load cached data enabled!")
