@@ -32,7 +32,7 @@ class MainActivity : BaseLockActivity() {
         enableEdgeToEdge()
 
         if (savedInstanceState != null) {
-            lockOnCreateEnabled = savedInstanceState.getBoolean("lockOnCreateEnabled") or BuildConfig.DEBUG.not()
+            lockOnCreateEnabled = savedInstanceState.getBoolean("lockOnCreateEnabled", false) or BuildConfig.DEBUG.not()
         }
 
         if (fpManager.isPermissionGranted()) {

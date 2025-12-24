@@ -7,9 +7,12 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.librevault.common.state.SelectState
@@ -37,10 +40,9 @@ class GalleryViewModel(
         private const val KEY_FOLDER_NAME = "current_folder_name"
     }
 
-    private val _folderNameState = savedStateHandle.getStateFlow(
-        key = KEY_FOLDER_NAME,
-        initialValue = FolderName.IMAGES
-    )
+    private val _folderNameState = savedStateHandle.getStateFlow(KEY_FOLDER_NAME, FolderName.IMAGES())
+        .map { FolderName(it) }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, FolderName.IMAGES)
     val folderNameState: StateFlow<FolderName> = _folderNameState
 
     private val _encryptState = MutableStateFlow<EncryptListState>(UiState.Idle)
@@ -106,7 +108,7 @@ class GalleryViewModel(
     private fun loadFolder(folderName: FolderName) {
         // Updating the savedStateHandle value automatically
         // updates the flow and prepares for potential death
-        savedStateHandle[KEY_FOLDER_NAME] = folderName
+        savedStateHandle[KEY_FOLDER_NAME] = folderName()
     }
 
     private fun loadThumbnails(mediaIds: List<MediaId>, refresh: Boolean = false) {
