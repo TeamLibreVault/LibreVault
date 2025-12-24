@@ -2,14 +2,9 @@ package org.librevault.presentation.screens.gallery
 
 import android.util.Log
 import androidx.activity.compose.BackHandler
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
@@ -22,10 +17,8 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.unit.dp
 import cafe.adriel.voyager.core.screen.Screen
 import org.koin.androidx.compose.koinViewModel
 import org.librevault.R
@@ -45,7 +38,7 @@ import org.librevault.presentation.screens.gallery.components.EmptyView
 import org.librevault.presentation.screens.gallery.components.EncryptingDialog
 import org.librevault.presentation.screens.gallery.components.GalleryDrawer
 import org.librevault.presentation.screens.gallery.components.GalleryTopBar
-import org.librevault.presentation.screens.gallery.components.PreviewCard
+import org.librevault.presentation.screens.gallery.components.MediaGrid
 import org.librevault.presentation.screens.gallery.components.media_picker.MediaPickerDialog
 import org.librevault.presentation.viewmodels.GalleryViewModel
 import org.librevault.utils.ignore
@@ -163,48 +156,19 @@ class GalleryScreen : Screen {
                                 0 -> EmptyView()
 
                                 else -> {
-                                    LazyVerticalGrid(
-                                        columns = GridCells.Fixed(3),
-                                        contentPadding = PaddingValues(8.dp),
-                                        verticalArrangement = Arrangement.spacedBy(8.dp),
-                                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                                    ) {
-                                        items(
-                                            items = state.data,
-                                            key = { it.mediaId() }
-                                        ) { thumbnail ->
-                                            val context = LocalContext.current
-                                            val mediaId = thumbnail.mediaId
-
-                                            PreviewCard(
-                                                context = context,
-                                                isVideo = allFolderThumbsState[FolderName.VIDEOS]?.contains(thumbnail) == true,
-                                                thumb = thumbnail,
-                                                selected = mediaId() in deleteFilesSelectionState.currentSelection,
-                                                onLongClick = {
-                                                    viewModel.onEvent(GalleryEvent.SetDeleteSelection(mediaId))
-                                                }
-                                            ) {
-                                                val isSelecting =
-                                                    deleteFilesSelectionState is SelectState.Selecting
-
-                                                if (isSelecting) {
-                                                    Log.d(
-                                                        TAG,
-                                                        "Content: Delete media selection: ${mediaId()}"
-                                                    )
-                                                    viewModel.onEvent(GalleryEvent.SetDeleteSelection(MediaId(mediaId())))
-
-                                                    return@PreviewCard
-                                                }
-
-                                                Log.d(
-                                                    TAG,
-                                                    "Content: Previewing media: ${mediaId()}"
+                                    MediaGrid(
+                                        state = state,
+                                        allFolderThumbsState = allFolderThumbsState,
+                                        deleteFilesSelectionState = deleteFilesSelectionState,
+                                        onLongSelect = { mediaId ->
+                                            viewModel.onEvent(
+                                                GalleryEvent.SetDeleteSelection(
+                                                    mediaId
                                                 )
-                                                viewModel.onEvent(GalleryEvent.PreviewMedia(mediaId()))
-                                            }
+                                            )
                                         }
+                                    ) { mediaId ->
+                                        viewModel.onEvent(GalleryEvent.PreviewMedia(mediaId))
                                     }
                                 }
                             }

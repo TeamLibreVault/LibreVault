@@ -13,7 +13,7 @@ sealed class GalleryEvent {
     object SelectFiles : GalleryEvent()
     object UnselectFiles : GalleryEvent()
     data class EncryptFiles(val files: List<File>) : GalleryEvent()
-    data class PreviewMedia(val id: String) : GalleryEvent()
+    data class PreviewMedia(val id: MediaId) : GalleryEvent()
     data class SetDeleteSelection(val id: MediaId, val autoDeselect: Boolean = true) : GalleryEvent()
     data object ConfirmDeleteSelection : GalleryEvent()
     data object DeleteSelectedFiles : GalleryEvent()

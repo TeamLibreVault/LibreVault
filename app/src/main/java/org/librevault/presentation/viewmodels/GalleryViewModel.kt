@@ -244,11 +244,11 @@ class GalleryViewModel(
         }
     }
 
-    private fun previewMedia(mediaId: String) {
+    private fun previewMedia(mediaId: MediaId) {
         Log.d(TAG, "previewMedia: Previewing media: $mediaId")
         PreviewActivity.startIntent(
             context = application,
-            mediaId = mediaId
+            mediaId = mediaId()
         )
     }
 
