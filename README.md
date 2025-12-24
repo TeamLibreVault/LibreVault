@@ -9,6 +9,7 @@ LibreVault is an **open-source media vault** for Android that lets you securely 
 [![License](https://img.shields.io/badge/license-GNU%20GPL%20v3-blue.svg)](LICENSE)
 [![Platform](https://img.shields.io/badge/platform-Android-lightgrey.svg)]()
 [![Jetpack Compose](https://img.shields.io/badge/Jetpack%20Compose-Modern%20UI-blue?logo=jetpack-compose)](https://developer.android.com/jetpack/compose)
+[![Donate with LiberaPay](https://img.shields.io/badge/Donate-LibrePay-orange?logo=liberapay)](https://liberapay.com/kys0ff)
 
 ---
 
