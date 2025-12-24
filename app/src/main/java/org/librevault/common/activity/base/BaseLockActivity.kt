@@ -27,7 +27,7 @@ abstract class BaseLockActivity : AppCompatActivity() {
 
     protected open val autoLockEnabled: Boolean = true
     protected abstract val autoLockTimeout: Long
-    protected open val lockOnCreateEnabled: Boolean = BuildConfig.DEBUG.not()
+    protected open var lockOnCreateEnabled: Boolean = BuildConfig.DEBUG.not()
 
     protected open val isAnonymousMode: Boolean = true
 

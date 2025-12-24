@@ -67,8 +67,7 @@ class PreviewActivity : BaseLockActivity() {
     override val autoLockTimeout: Long
         get() = 1.minutes.inWholeMilliseconds
 
-    override val lockOnCreateEnabled: Boolean
-        get() = false
+    override var lockOnCreateEnabled: Boolean = false
 
     override fun getBiometricTitle(): String = getString(R.string.app_name)
 

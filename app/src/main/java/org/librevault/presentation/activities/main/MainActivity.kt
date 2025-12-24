@@ -7,6 +7,7 @@ import androidx.compose.runtime.LaunchedEffect
 import cafe.adriel.voyager.navigator.CurrentScreen
 import cafe.adriel.voyager.navigator.Navigator
 import org.koin.androidx.viewmodel.ext.android.viewModel
+import org.librevault.BuildConfig
 import org.librevault.R
 import org.librevault.common.activity.base.BaseLockActivity
 import org.librevault.common.permissions.FilePermissionManager
@@ -29,6 +30,10 @@ class MainActivity : BaseLockActivity() {
         viewModel.onEvent(MainEvent.InitSplashScreen(this))
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+
+        if (savedInstanceState != null) {
+            lockOnCreateEnabled = savedInstanceState.getBoolean("lockOnCreateEnabled") or BuildConfig.DEBUG.not()
+        }
 
         if (fpManager.isPermissionGranted()) {
             tryShowBiometric()
@@ -57,6 +62,11 @@ class MainActivity : BaseLockActivity() {
                 }
             }
         }
+    }
+
+    override fun onSaveInstanceState(outState: Bundle) {
+        super.onSaveInstanceState(outState)
+        outState.putBoolean("lockOnCreateEnabled", false)
     }
 
     override fun getBiometricTitle(): String = getString(R.string.app_name)
