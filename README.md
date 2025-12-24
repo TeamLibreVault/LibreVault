@@ -5,8 +5,8 @@ LibreVault is an **open-source media vault** for Android that lets you securely 
 > ⚠️ **Current version:** `1.1.0-alpha01`  
 > LibreVault is in **early alpha**. Expect bugs, missing features, and breaking changes.
 
-[![Build Status](https://img.shields.io/badge/build-passing-brightgreen)](https://github.com/your-username/librevault-android)
-[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![Build Status](https://img.shields.io/badge/build-passing-brightgreen)](https://github.com/TeamLibreVault/LibreVault)
+[![License](https://img.shields.io/badge/license-GNU%20GPL%20v3-blue.svg)](LICENSE)
 [![Platform](https://img.shields.io/badge/platform-Android-lightgrey.svg)]()
 [![Jetpack Compose](https://img.shields.io/badge/Jetpack%20Compose-Modern%20UI-blue?logo=jetpack-compose)](https://developer.android.com/jetpack/compose)
 
